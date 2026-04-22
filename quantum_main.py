@@ -6,11 +6,23 @@ import json
 import numpy as np
 
 from quantum_utils import *
-from quantum_optmization import *
+from quantum_optmization import optimize_atom_positions
 from quantum_plot import *
 from quantum_benchmark import *
 from quantum_io import *
-from quantum_pulser import *
+from quantum_pulser import (
+    build_xy_adiabatic_sequence,
+    build_xy_smooth_sequence,
+    compute_edge_correlators,
+    evaluate_pulser_final_state,
+    evaluate_smooth_pulser_final_state,
+    grid_search_adiabatic_parameters,
+    grid_search_smooth_parameters,
+    random_search_xy_pulses,
+    scan_annealing_times,
+    state_overlap_pure,
+    study_fixed_smooth_sequence_on_random_graphs,
+)
 
 
 if __name__ == "__main__":
@@ -22,11 +34,40 @@ if __name__ == "__main__":
     # ==================== CONFIGURATION ====================
     RUN_BENCHMARK = False
     RUN_SINGLE_TEST = False
+
     RUN_PULSER_EXPERIMENT = False
     RUN_PULSER_PARAM_SEARCH = False
-    RUN_PULSER_GRID_SEARCH = True
+    RUN_PULSER_GRID_SEARCH = False
+
+    RUN_PULSER_SMOOTH_EXPERIMENT = False
+    RUN_PULSER_SMOOTH_GRID_SEARCH = False
+    RUN_PULSER_SMOOTH_GRAPH_STUDY = True
     SAVE_RESULTS = True
 
+    active_modes = [
+        RUN_BENCHMARK,
+        RUN_SINGLE_TEST,
+        RUN_PULSER_EXPERIMENT,
+        RUN_PULSER_PARAM_SEARCH,
+        RUN_PULSER_GRID_SEARCH,
+        RUN_PULSER_SMOOTH_EXPERIMENT,
+        RUN_PULSER_SMOOTH_GRID_SEARCH,
+        RUN_PULSER_SMOOTH_GRAPH_STUDY,
+    ]
+
+    if sum(active_modes) > 1:
+        raise ValueError("Un seul mode doit être activé à la fois.")
+
+    print("Modes actifs :")
+    print(f"  RUN_BENCHMARK                = {RUN_BENCHMARK}")
+    print(f"  RUN_SINGLE_TEST              = {RUN_SINGLE_TEST}")
+    print(f"  RUN_PULSER_EXPERIMENT        = {RUN_PULSER_EXPERIMENT}")
+    print(f"  RUN_PULSER_PARAM_SEARCH      = {RUN_PULSER_PARAM_SEARCH}")
+    print(f"  RUN_PULSER_GRID_SEARCH       = {RUN_PULSER_GRID_SEARCH}")
+    print(f"  RUN_PULSER_SMOOTH_EXPERIMENT = {RUN_PULSER_SMOOTH_EXPERIMENT}")
+    print(f"  RUN_PULSER_SMOOTH_GRID_SEARCH= {RUN_PULSER_SMOOTH_GRID_SEARCH}")
+    print(f"  RUN_PULSER_SMOOTH_GRAPH_STUDY = {RUN_PULSER_SMOOTH_GRAPH_STUDY}")
+    print()
     n_values = [4, 5, 6, 7, 8]
     n_instances = 60
 
@@ -335,8 +376,338 @@ if __name__ == "__main__":
             print("\n✅ Résultats sauvegardés dans :")
             print("   - pulser_adiabatic_grid_search.json")
             print("   - pulser_adiabatic_grid_search_best.json")
+    # ====================== EXPÉRIENCE PULSER SMOOTH ======================
+    elif RUN_PULSER_SMOOTH_EXPERIMENT:
+        print("\nMode EXPÉRIENCE PULSER SMOOTH activé\n")
+
+        n = 4
+        target_edges = [
+            (0, 1, 1.0),
+            (1, 2, 0.8),
+            (2, 3, 1.2),
+            (0, 3, 0.6),
+        ]
+
+        best_positions, best_couplings, best_error = optimize_atom_positions(target_edges, n=n)
+
+        print("=== POSITIONS OPTIMISÉES ===")
+        for i, pos in enumerate(best_positions):
+            print(f"Atome {i}: ({pos[0]:.6f}, {pos[1]:.6f})")
+
+        print(f"\nErreur de mapping = {best_error:.6f}")
+
+        omega_prep = 2 * np.pi * 2.0
+        prep_duration = 125
+
+        omega_peak = 2 * np.pi * 2.0
+        rise_duration = 1000
+        hold_duration = 1000
+        fall_duration = 26000
+
+        delta_start = np.pi
+        delta_hold = -np.pi / 2
+        delta_end = -np.pi
+
+        sampling_rate = 0.05
+        scale = 15.5
+
+        print("\n=== SÉQUENCE PULSER SMOOTH ===")
+        seq_test = build_xy_smooth_sequence(
+            positions=best_positions,
+            omega_prep=omega_prep,
+            prep_duration=prep_duration,
+            omega_peak=omega_peak,
+            rise_duration=rise_duration,
+            hold_duration=hold_duration,
+            fall_duration=fall_duration,
+            delta_start=delta_start,
+            delta_hold=delta_hold,
+            delta_end=delta_end,
+            scale=scale,
+        )
+        seq_test.draw()
+        print("Durée totale :", seq_test.get_duration())
+        print("Base de mesure :", seq_test.get_measurement_basis())
+
+        print("\n=== ÉVALUATION PULSER SMOOTH ===")
+        out = evaluate_smooth_pulser_final_state(
+            n=n,
+            positions=best_positions,
+            target_edges=target_edges,
+            omega_prep=omega_prep,
+            prep_duration=prep_duration,
+            omega_peak=omega_peak,
+            rise_duration=rise_duration,
+            hold_duration=hold_duration,
+            fall_duration=fall_duration,
+            delta_start=delta_start,
+            delta_hold=delta_hold,
+            delta_end=delta_end,
+            sampling_rate=sampling_rate,
+            scale=scale,
+        )
+
+        print(f"E0(H_qmc)                 = {out['E0_qmc']:.6f}")
+        print(f"E0(H_r)                   = {out['E0_r']:.6f}")
+        print(f"E(proxy exact dans QMC)   = {out['E_proxy_exact_in_qmc']:.6f}")
+        print(f"E(Pulser final dans QMC)  = {out['E_pulser_in_qmc']:.6f}")
+        print(f"E(Pulser final dans proxy)= {out['E_pulser_in_proxy']:.6f}")
+        print(f"Ratio proxy exact         = {out['ratio_proxy_exact']:.6f}")
+        print(f"Ratio Pulser              = {out['ratio_pulser']:.6f}")
+
+        overlap_proxy = state_overlap_pure(out["psi_r"], out["psi_T"])
+        print(f"Overlap avec le fondamental exact de H_r = {overlap_proxy:.6f}")
+
+        print("\n=== CORRÉLATIONS FINALES SUR LES ARÊTES ===")
+        corrs = compute_edge_correlators(out["rho_T"], n, target_edges)
+        for item in corrs:
+            print(
+                f"edge={item['edge']} | "
+                f"XX={item['xx']:.6f}, "
+                f"YY={item['yy']:.6f}, "
+                f"ZZ={item['zz']:.6f}, "
+                f"t={item['t']:.6f}"
+            )
+
+        if SAVE_RESULTS:
+            serializable_out = {
+                "E0_qmc": float(out["E0_qmc"]),
+                "E0_r": float(out["E0_r"]),
+                "E_proxy_exact_in_qmc": float(out["E_proxy_exact_in_qmc"]),
+                "E_pulser_in_qmc": float(out["E_pulser_in_qmc"]),
+                "E_pulser_in_proxy": float(out["E_pulser_in_proxy"]),
+                "ratio_proxy_exact": float(out["ratio_proxy_exact"]),
+                "ratio_pulser": float(out["ratio_pulser"]),
+                "overlap_proxy": float(overlap_proxy),
+                "omega_peak": float(omega_peak),
+                "rise_duration": int(rise_duration),
+                "hold_duration": int(hold_duration),
+                "fall_duration": int(fall_duration),
+                "delta_start": float(delta_start),
+                "delta_hold": float(delta_hold),
+                "delta_end": float(delta_end),
+            }
+
+            with open("pulser_smooth_experiment.json", "w", encoding="utf-8") as f:
+                json.dump(serializable_out, f, indent=2, ensure_ascii=False)
+
+            print("\n✅ Résultats sauvegardés dans pulser_smooth_experiment.json")
+    elif RUN_PULSER_SMOOTH_GRID_SEARCH:
+        print("\nMode GRID SEARCH PULSER SMOOTH activé\n")
+
+        n = 4
+        target_edges = [
+            (0, 1, 1.0),
+            (1, 2, 0.8),
+            (2, 3, 1.2),
+            (0, 3, 0.6),
+        ]
+
+        best_positions, best_couplings, best_error = optimize_atom_positions(target_edges, n=n)
+
+        print("=== POSITIONS OPTIMISÉES ===")
+        for i, pos in enumerate(best_positions):
+            print(f"Atome {i}: ({pos[0]:.6f}, {pos[1]:.6f})")
+
+        print(f"\nErreur de mapping = {best_error:.6f}")
+
+        omega_prep = 2 * np.pi * 2.0
+        prep_duration = 125
+        sampling_rate = 0.05
+        scale = 15.5
+
+        omega_peak_values = [
+            2 * np.pi * 2.0,
+            2 * np.pi * 2.5,
+            2 * np.pi * 3.0,
+        ]
+
+        rise_durations = [1000, 2000, 3000]
+        hold_durations = [1000, 2000, 3000]
+        fall_durations = [18000, 22000, 26000]
+
+        delta_start_values = [
+            0.0,
+            2 * np.pi * 0.5,
+            2 * np.pi * 1.0,
+        ]
+
+        delta_hold_values = [
+            0.0,
+            2 * np.pi * 0.25,
+            -2 * np.pi * 0.25,
+        ]
+
+        delta_end_values = [
+            0.0,
+            -2 * np.pi * 0.5,
+            -2 * np.pi * 1.0,
+        ]
+
+        search_out = grid_search_smooth_parameters(
+            n=n,
+            positions=best_positions,
+            target_edges=target_edges,
+            omega_prep=omega_prep,
+            prep_duration=prep_duration,
+            omega_peak_values=omega_peak_values,
+            rise_durations=rise_durations,
+            hold_durations=hold_durations,
+            fall_durations=fall_durations,
+            delta_start_values=delta_start_values,
+            delta_hold_values=delta_hold_values,
+            delta_end_values=delta_end_values,
+            sampling_rate=sampling_rate,
+            scale=scale,
+        )
+
+        best_result = search_out["best_result"]
+        all_results = search_out["all_results"]
+
+        print("\n=== MEILLEUR RÉSULTAT TROUVÉ ===")
+        print(f"omega_peak        = {best_result['omega_peak']:.6f}")
+        print(f"rise_duration     = {best_result['rise_duration']}")
+        print(f"hold_duration     = {best_result['hold_duration']}")
+        print(f"fall_duration     = {best_result['fall_duration']}")
+        print(f"delta_start       = {best_result['delta_start']:.6f}")
+        print(f"delta_hold        = {best_result['delta_hold']:.6f}")
+        print(f"delta_end         = {best_result['delta_end']:.6f}")
+        print(f"E_pulser_in_qmc   = {best_result['E_pulser_in_qmc']:.6f}")
+        print(f"E_pulser_in_proxy = {best_result['E_pulser_in_proxy']:.6f}")
+        print(f"ratio_pulser      = {best_result['ratio_pulser']:.6f}")
+        print(f"overlap_proxy     = {best_result['overlap_proxy']:.6f}")
+
+        print("\n=== TOP 10 ===")
+        for i, row in enumerate(all_results[:10], start=1):
+            print(
+                f"{i:2d} | "
+                f"omega_peak={row['omega_peak']:.6f} | "
+                f"rise={row['rise_duration']:5d} | "
+                f"hold={row['hold_duration']:5d} | "
+                f"fall={row['fall_duration']:6d} | "
+                f"dstart={row['delta_start']:.6f} | "
+                f"dhold={row['delta_hold']:.6f} | "
+                f"dend={row['delta_end']:.6f} | "
+                f"ratio={row['ratio_pulser']:.6f} | "
+                f"overlap={row['overlap_proxy']:.6f}"
+            )
+
+        if SAVE_RESULTS:
+            with open("pulser_smooth_grid_search.json", "w", encoding="utf-8") as f:
+                json.dump(all_results, f, indent=2, ensure_ascii=False)
+
+            with open("pulser_smooth_grid_search_best.json", "w", encoding="utf-8") as f:
+                json.dump(best_result, f, indent=2, ensure_ascii=False)
+
+            print("\n✅ Résultats sauvegardés dans :")
+            print("   - pulser_smooth_grid_search.json")
+            print("   - pulser_smooth_grid_search_best.json")
+        # ====================== ÉTUDE MULTI-GRAPHES SMOOTH (n=4) ======================
+    elif RUN_PULSER_SMOOTH_GRAPH_STUDY:
+        print("\nMode ÉTUDE MULTI-GRAPHES SMOOTH activé\n")
+
+        # Taille fixée
+        n = 4
+
+        # Paramètres des graphes aléatoires
+        n_graphs = 100
+        edge_prob = 0.6
+        w_min = 0.5
+        w_max = 1.5
+        seed = 42
+
+        # Meilleure séquence smooth trouvée
+        omega_prep = 2 * np.pi * 2.0
+        prep_duration = 125
+
+        omega_peak = 2 * np.pi * 2.0
+        rise_duration = 1000
+        hold_duration = 1000
+        fall_duration = 26000
+
+        delta_start = np.pi
+        delta_hold = -np.pi / 2
+        delta_end = -np.pi
+
+        sampling_rate = 0.05
+        scale = 15.5
+
+        study_out = study_fixed_smooth_sequence_on_random_graphs(
+            n=n,
+            n_graphs=n_graphs,
+            edge_prob=edge_prob,
+            w_min=w_min,
+            w_max=w_max,
+            omega_prep=omega_prep,
+            prep_duration=prep_duration,
+            omega_peak=omega_peak,
+            rise_duration=rise_duration,
+            hold_duration=hold_duration,
+            fall_duration=fall_duration,
+            delta_start=delta_start,
+            delta_hold=delta_hold,
+            delta_end=delta_end,
+            sampling_rate=sampling_rate,
+            scale=scale,
+            seed=seed,
+            require_connected=True,
+        )
+
+        summary = study_out["summary"]
+        results = study_out["results"]
+
+        print("\n=== RÉSUMÉ GLOBAL ===")
+        print(f"n                         = {summary['n']}")
+        print(f"nombre de graphes         = {summary['n_graphs']}")
+        print(f"edge_prob                 = {summary['edge_prob']}")
+        print(f"poids                     = [{summary['w_min']}, {summary['w_max']}]")
+        print()
+        print(f"ratio_pulser_mean         = {summary['ratio_pulser_mean']:.6f}")
+        print(f"ratio_pulser_min          = {summary['ratio_pulser_min']:.6f}")
+        print(f"ratio_pulser_max          = {summary['ratio_pulser_max']:.6f}")
+        print()
+        print(f"overlap_mean              = {summary['overlap_mean']:.6f}")
+        print(f"overlap_min               = {summary['overlap_min']:.6f}")
+        print(f"overlap_max               = {summary['overlap_max']:.6f}")
+        print()
+        print(f"mapping_error_mean        = {summary['mapping_error_mean']:.6f}")
+        print(f"mapping_error_max         = {summary['mapping_error_max']:.6f}")
+        print()
+        print(f"ratio_proxy_exact_mean    = {summary['ratio_proxy_exact_mean']:.6f}")
+        print(f"ratio_proxy_exact_min     = {summary['ratio_proxy_exact_min']:.6f}")
+        print(f"ratio_proxy_exact_max     = {summary['ratio_proxy_exact_max']:.6f}")
+
+        print("\n=== DÉTAIL PAR GRAPHE ===")
+        for r in results:
+            print(
+                f"Graphe {r['graph_id']:2d} | "
+                f"ratio_pulser={r['ratio_pulser']:.6f} | "
+                f"overlap={r['overlap_proxy']:.6f} | "
+                f"ratio_proxy_exact={r['ratio_proxy_exact']:.6f} | "
+                f"mapping_error={r['mapping_error']:.6f}"
+            )
+
+        if SAVE_RESULTS:
+            plot_smooth_graph_study_article(
+                results,
+                summary=summary,
+                save_paths="figure_smooth_graph_study_n4.png",
+                show=False,
+            )
+
+            with open("pulser_smooth_graph_study_n4.json", "w", encoding="utf-8") as f:
+                json.dump(results, f, indent=2, ensure_ascii=False)
+
+            with open("pulser_smooth_graph_study_n4_summary.json", "w", encoding="utf-8") as f:
+                json.dump(summary, f, indent=2, ensure_ascii=False)
+
+            print("\n✅ Résultats sauvegardés dans :")
+            print("   - pulser_smooth_graph_study_n4.json")
+            print("   - pulser_smooth_graph_study_n4_summary.json")
+            print("   - figure_smooth_graph_study_n4.png")
+    
     else:
         print("Aucun mode activé.")
-
+    
     print("\n" + "=" * 80)
     print("Exécution terminée.")

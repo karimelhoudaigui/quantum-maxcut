@@ -1,0 +1,302 @@
+:root {
+  color-scheme: light;
+  --bg: #f5f7fb;
+  --panel: #ffffff;
+  --ink: #17202a;
+  --muted: #667085;
+  --line: #d9e0ea;
+  --blue: #2057a8;
+  --teal: #147d64;
+  --red: #b3261e;
+  --amber: #b7791f;
+  --shadow: 0 18px 45px rgba(21, 34, 50, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+}
+
+.sidebar {
+  background: #101828;
+  color: white;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  min-height: 100vh;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mark {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  background: #39c6a3;
+  color: #071b18;
+  font-weight: 800;
+  border-radius: 8px;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+.brand p,
+.eyebrow,
+.panel-head span,
+.outputs,
+.experiment small {
+  color: var(--muted);
+}
+
+.brand p {
+  margin: 4px 0 0;
+  color: #aab4c5;
+  font-size: 13px;
+}
+
+.experiments {
+  display: grid;
+  gap: 8px;
+}
+
+.experiment {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: white;
+  text-align: left;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.experiment strong {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.experiment.active {
+  border-color: #39c6a3;
+  background: rgba(57, 198, 163, 0.18);
+}
+
+.experiment.missing {
+  opacity: 0.55;
+}
+
+.workspace {
+  min-width: 0;
+  padding: 28px;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.eyebrow {
+  margin: 0 0 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.topbar h2 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.badge {
+  border: 1px solid var(--line);
+  background: white;
+  padding: 8px 10px;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.metric {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  box-shadow: var(--shadow);
+}
+
+.metric span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.metric strong {
+  display: block;
+  font-size: 24px;
+  margin-top: 6px;
+}
+
+.plot-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.95fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+
+.sidebar .panel {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: none;
+}
+
+.compact h2 {
+  font-size: 14px;
+  margin: 0 0 10px;
+}
+
+.panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.panel h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.plot {
+  min-height: 330px;
+}
+
+.plot.small {
+  min-height: 260px;
+}
+
+svg {
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  display: block;
+}
+
+.axis {
+  stroke: #98a2b3;
+  stroke-width: 1;
+}
+
+.grid {
+  stroke: #e7ecf3;
+  stroke-width: 1;
+}
+
+.label {
+  fill: var(--muted);
+  font-size: 11px;
+}
+
+.table-wrap {
+  overflow: auto;
+  max-height: 330px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+th,
+td {
+  border-bottom: 1px solid var(--line);
+  padding: 9px 8px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+th:first-child,
+td:first-child {
+  text-align: left;
+}
+
+th {
+  color: var(--muted);
+  font-weight: 700;
+  background: #f8fafc;
+  position: sticky;
+  top: 0;
+}
+
+button.primary {
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  background: #39c6a3;
+  color: #071b18;
+  font-weight: 800;
+  padding: 11px 12px;
+  cursor: pointer;
+}
+
+.outputs {
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.outputs a {
+  color: #8ce8d2;
+}
+
+@media (max-width: 980px) {
+  body {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    min-height: auto;
+  }
+
+  .metrics,
+  .plot-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,3 +1,7 @@
+import matplotlib
+
+matplotlib.use("Agg")
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -167,3 +171,122 @@ def plot_ratio_vs_mapping_error(results, save_path=None, show=True):
         plt.show()
     else:
         plt.close()
+
+
+def plot_smooth_graph_study_article(results, summary=None, save_paths=None, show=True):
+    """
+    Figure compacte pour l'article :
+    - ratio Pulser par graphe
+    - ratio proxy exact pour distinguer embedding et préparation dynamique
+    - erreur de mapping sur un second panneau
+    """
+    if not results:
+        raise ValueError("La liste results est vide.")
+
+    graph_ids = np.array([r.get("graph_id", i) for i, r in enumerate(results)], dtype=int)
+    x = np.arange(len(results))
+
+    ratio_pulser = np.array([r["ratio_pulser"] for r in results], dtype=float)
+    ratio_proxy = np.array([r["ratio_proxy_exact"] for r in results], dtype=float)
+    mapping_error = np.array([r["mapping_error"] for r in results], dtype=float)
+
+    mean_ratio = (
+        float(summary["ratio_pulser_mean"])
+        if summary and "ratio_pulser_mean" in summary
+        else float(np.mean(ratio_pulser))
+    )
+    min_ratio = (
+        float(summary["ratio_pulser_min"])
+        if summary and "ratio_pulser_min" in summary
+        else float(np.min(ratio_pulser))
+    )
+    max_ratio = (
+        float(summary["ratio_pulser_max"])
+        if summary and "ratio_pulser_max" in summary
+        else float(np.max(ratio_pulser))
+    )
+
+    fig, (ax_ratio, ax_map) = plt.subplots(
+        2,
+        1,
+        figsize=(8.2, 6.2),
+        sharex=True,
+        gridspec_kw={"height_ratios": [2.2, 1.0], "hspace": 0.08},
+    )
+    fig.subplots_adjust(bottom=0.13)
+
+    colors = plt.cm.viridis(np.linspace(0.18, 0.82, len(results)))
+    ax_ratio.bar(
+        x,
+        ratio_pulser,
+        color=colors,
+        edgecolor="black",
+        linewidth=0.7,
+        alpha=0.88,
+        label="Séquence smooth Pulser",
+    )
+    ax_ratio.plot(
+        x,
+        ratio_proxy,
+        color="black",
+        marker="o",
+        markersize=5,
+        linewidth=1.8,
+        label="Proxy exact après embedding",
+    )
+    ax_ratio.axhline(
+        mean_ratio,
+        color="#b3261e",
+        linestyle="--",
+        linewidth=1.6,
+        label=f"Moyenne Pulser = {mean_ratio:.2f}",
+    )
+    ax_ratio.fill_between(
+        [-0.5, len(results) - 0.5],
+        min_ratio,
+        max_ratio,
+        color="#b3261e",
+        alpha=0.08,
+        label=f"Intervalle Pulser [{min_ratio:.2f}, {max_ratio:.2f}]",
+    )
+    ax_ratio.set_ylabel("Ratio d'approximation", fontsize=11)
+    ax_ratio.set_ylim(0.0, max(1.05, float(np.max(ratio_proxy)) * 1.08))
+    ax_ratio.grid(True, axis="y", alpha=0.25)
+    ax_ratio.legend(loc="upper right", fontsize=9, frameon=True)
+    ax_ratio.set_title(
+        "Robustesse d'une séquence smooth fixée sur 10 graphes aléatoires (n=4)",
+        fontsize=12,
+        pad=10,
+    )
+
+    ax_map.plot(
+        x,
+        mapping_error,
+        color="#1f6f8b",
+        marker="s",
+        markersize=5,
+        linewidth=1.7,
+    )
+    ax_map.set_yscale("log")
+    ax_map.set_ylabel("Erreur de mapping", fontsize=11)
+    ax_map.set_xlabel("Instance de graphe aléatoire", fontsize=11)
+    ax_map.set_xticks(x)
+    ax_map.set_xticklabels([str(i) for i in graph_ids])
+    ax_map.grid(True, axis="y", alpha=0.25)
+
+    note = (
+        "La variabilité du ratio Pulser contraste avec une erreur de mapping faible, "
+        "ce qui pointe vers une limitation dynamique."
+    )
+    fig.text(0.5, 0.012, note, ha="center", va="bottom", fontsize=9)
+
+    if save_paths:
+        if isinstance(save_paths, (str, bytes)):
+            save_paths = [save_paths]
+        for save_path in save_paths:
+            fig.savefig(save_path, dpi=300, bbox_inches="tight")
+
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)

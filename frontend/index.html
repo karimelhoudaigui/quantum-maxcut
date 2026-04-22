@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Quantum MaxCut Lab</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="mark">Q</div>
+        <div>
+          <h1>Quantum MaxCut</h1>
+          <p>Rydberg proxy lab</p>
+        </div>
+      </div>
+
+      <nav class="experiments" id="experiments"></nav>
+
+      <section class="panel compact">
+        <h2>Sortie</h2>
+        <button id="generatePng" class="primary">Générer PNG</button>
+        <div id="outputList" class="outputs"></div>
+      </section>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Interface locale</p>
+          <h2 id="title">Chargement...</h2>
+        </div>
+        <div id="statusBadge" class="badge">Initialisation</div>
+      </header>
+
+      <section class="metrics" id="metrics"></section>
+
+      <section class="plot-grid">
+        <article class="panel wide">
+          <div class="panel-head">
+            <h3 id="primaryPlotTitle">Plot principal</h3>
+            <span id="primaryPlotHint"></span>
+          </div>
+          <div id="primaryPlot" class="plot"></div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <h3 id="secondaryPlotTitle">Diagnostic</h3>
+            <span id="secondaryPlotHint"></span>
+          </div>
+          <div id="secondaryPlot" class="plot small"></div>
+        </article>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h3>Données</h3>
+          <span id="tableHint"></span>
+        </div>
+        <div class="table-wrap">
+          <table id="dataTable"></table>
+        </div>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
