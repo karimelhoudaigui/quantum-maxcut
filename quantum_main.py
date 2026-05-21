@@ -23,6 +23,27 @@ from quantum_pulser import (
     state_overlap_pure,
     study_fixed_smooth_sequence_on_random_graphs,
 )
+from quantum_hybrid import run_hybrid_on_pulser_output
+from quantum_hybrid import (
+    plot_hybrid_distribution,
+    plot_hybrid_scaling_summary,
+    plot_hybrid_vs_pulser_scatter,
+    study_fixed_hybrid_sequence_on_random_graphs,
+)
+from graph_structure_study import (
+    plot_hybrid_by_graph_type,
+    plot_hybrid_vs_density,
+    plot_mapping_by_graph_family,
+    plot_mapping_by_graph_type,
+    plot_mapping_error_by_connectivity_bucket,
+    plot_mapping_vs_avg_degree,
+    plot_mapping_vs_density,
+    plot_mapping_vs_max_degree,
+    plot_proxy_by_graph_type,
+    plot_proxy_vs_avg_degree,
+    plot_proxy_vs_density,
+    study_graph_structure_on_random_graphs,
+)
 
 
 if __name__ == "__main__":
@@ -41,7 +62,12 @@ if __name__ == "__main__":
 
     RUN_PULSER_SMOOTH_EXPERIMENT = False
     RUN_PULSER_SMOOTH_GRID_SEARCH = False
-    RUN_PULSER_SMOOTH_GRAPH_STUDY = True
+    RUN_PULSER_SMOOTH_GRAPH_STUDY = False
+
+    RUN_HYBRID_SINGLE_EXPERIMENT = False
+    RUN_HYBRID_GRAPH_STUDY = False
+
+    RUN_GRAPH_STRUCTURE_STUDY = True
     SAVE_RESULTS = True
 
     active_modes = [
@@ -53,6 +79,9 @@ if __name__ == "__main__":
         RUN_PULSER_SMOOTH_EXPERIMENT,
         RUN_PULSER_SMOOTH_GRID_SEARCH,
         RUN_PULSER_SMOOTH_GRAPH_STUDY,
+        RUN_HYBRID_SINGLE_EXPERIMENT,
+        RUN_HYBRID_GRAPH_STUDY,
+        RUN_GRAPH_STRUCTURE_STUDY,
     ]
 
     if sum(active_modes) > 1:
@@ -67,7 +96,11 @@ if __name__ == "__main__":
     print(f"  RUN_PULSER_SMOOTH_EXPERIMENT = {RUN_PULSER_SMOOTH_EXPERIMENT}")
     print(f"  RUN_PULSER_SMOOTH_GRID_SEARCH= {RUN_PULSER_SMOOTH_GRID_SEARCH}")
     print(f"  RUN_PULSER_SMOOTH_GRAPH_STUDY = {RUN_PULSER_SMOOTH_GRAPH_STUDY}")
+    print(f"  RUN_HYBRID_SINGLE_EXPERIMENT = {RUN_HYBRID_SINGLE_EXPERIMENT}")
+    print(f"  RUN_HYBRID_GRAPH_STUDY       = {RUN_HYBRID_GRAPH_STUDY}")
+    print(f"  RUN_GRAPH_STRUCTURE_STUDY    = {RUN_GRAPH_STRUCTURE_STUDY}")
     print()
+    output_dirs = ensure_results_dirs()
     n_values = [4, 5, 6, 7, 8]
     n_instances = 60
 
@@ -87,13 +120,15 @@ if __name__ == "__main__":
         summarize_results(results)
 
         if SAVE_RESULTS:
-            save_results_csv(results, filename="benchmark_summary.csv")
-            save_results_json(results, filename="benchmark_full.json")
+            csv_path = table_output_path("benchmark_summary.csv")
+            json_path = json_output_path("benchmark_full.json")
+            save_results_csv(results, filename=csv_path)
+            save_results_json(results, filename=json_path)
             print("✅ Résultats sauvegardés (CSV + JSON)")
 
-        plot_mapping_error_vs_n(results, save_path="figure1_mapping_error_vs_n.png")
-        plot_ratio_vs_n(results, save_path="figure2_ratio_vs_n.png")
-        plot_ratio_vs_mapping_error(results, save_path="figure3_ratio_vs_mapping_error.png")
+        plot_mapping_error_vs_n(results, save_path=figure_output_path("figure1_mapping_error_vs_n.png"))
+        plot_ratio_vs_n(results, save_path=figure_output_path("figure2_ratio_vs_n.png"))
+        plot_ratio_vs_mapping_error(results, save_path=figure_output_path("figure3_ratio_vs_mapping_error.png"))
         print("✅ Plots sauvegardés")
 
     # ====================== TEST EXACT / DEBUG ======================
@@ -232,9 +267,8 @@ if __name__ == "__main__":
             )
 
         if SAVE_RESULTS:
-            with open("pulser_adiabatic_scan.json", "w", encoding="utf-8") as f:
-                json.dump(scan_results, f, indent=2, ensure_ascii=False)
-            print("\n✅ Résultats sauvegardés dans pulser_adiabatic_scan.json")
+            out_path = save_json_data(scan_results, "pulser_adiabatic_scan.json")
+            print(f"\n✅ Résultats sauvegardés dans {out_path}")
 
     # ====================== RECHERCHE DE PARAMÈTRES SUR PULSES ======================
     elif RUN_PULSER_PARAM_SEARCH:
@@ -286,10 +320,9 @@ if __name__ == "__main__":
                 "best_overlap_proxy": float(search_out["best_overlap_proxy"]),
                 "best_params": [float(x) for x in search_out["best_params"]],
             }
-            with open("pulser_param_search_best.json", "w", encoding="utf-8") as f:
-                json.dump(serializable, f, indent=2, ensure_ascii=False)
+            out_path = save_json_data(serializable, "pulser_param_search_best.json")
 
-            print("\n✅ Résultats sauvegardés dans pulser_param_search_best.json")
+            print(f"\n✅ Résultats sauvegardés dans {out_path}")
         # ====================== GRID SEARCH ADIABATIQUE ======================
     elif RUN_PULSER_GRID_SEARCH:
         print("\nMode GRID SEARCH ADIABATIQUE PULSER activé\n")
@@ -367,15 +400,12 @@ if __name__ == "__main__":
             )
 
         if SAVE_RESULTS:
-            with open("pulser_adiabatic_grid_search.json", "w", encoding="utf-8") as f:
-                json.dump(all_results, f, indent=2, ensure_ascii=False)
-
-            with open("pulser_adiabatic_grid_search_best.json", "w", encoding="utf-8") as f:
-                json.dump(best_result, f, indent=2, ensure_ascii=False)
+            all_path = save_json_data(all_results, "pulser_adiabatic_grid_search.json")
+            best_path = save_json_data(best_result, "pulser_adiabatic_grid_search_best.json")
 
             print("\n✅ Résultats sauvegardés dans :")
-            print("   - pulser_adiabatic_grid_search.json")
-            print("   - pulser_adiabatic_grid_search_best.json")
+            print(f"   - {all_path}")
+            print(f"   - {best_path}")
     # ====================== EXPÉRIENCE PULSER SMOOTH ======================
     elif RUN_PULSER_SMOOTH_EXPERIMENT:
         print("\nMode EXPÉRIENCE PULSER SMOOTH activé\n")
@@ -488,10 +518,8 @@ if __name__ == "__main__":
                 "delta_end": float(delta_end),
             }
 
-            with open("pulser_smooth_experiment.json", "w", encoding="utf-8") as f:
-                json.dump(serializable_out, f, indent=2, ensure_ascii=False)
-
-            print("\n✅ Résultats sauvegardés dans pulser_smooth_experiment.json")
+            out_path = save_json_data(serializable_out, "pulser_smooth_experiment.json")
+            print(f"\n✅ Résultats sauvegardés dans {out_path}")
     elif RUN_PULSER_SMOOTH_GRID_SEARCH:
         print("\nMode GRID SEARCH PULSER SMOOTH activé\n")
 
@@ -593,16 +621,366 @@ if __name__ == "__main__":
             )
 
         if SAVE_RESULTS:
-            with open("pulser_smooth_grid_search.json", "w", encoding="utf-8") as f:
-                json.dump(all_results, f, indent=2, ensure_ascii=False)
-
-            with open("pulser_smooth_grid_search_best.json", "w", encoding="utf-8") as f:
-                json.dump(best_result, f, indent=2, ensure_ascii=False)
+            all_path = save_json_data(all_results, "pulser_smooth_grid_search.json")
+            best_path = save_json_data(best_result, "pulser_smooth_grid_search_best.json")
 
             print("\n✅ Résultats sauvegardés dans :")
-            print("   - pulser_smooth_grid_search.json")
-            print("   - pulser_smooth_grid_search_best.json")
-        # ====================== ÉTUDE MULTI-GRAPHES SMOOTH (n=4) ======================
+            print(f"   - {all_path}")
+            print(f"   - {best_path}")
+    # ====================== EXPÉRIENCE HYBRIDE PULSER + SDP ======================
+    elif RUN_HYBRID_SINGLE_EXPERIMENT:
+        print("\nMode EXPÉRIENCE HYBRIDE activé\n")
+
+        n = 4
+        target_edges = [
+            (0, 1, 1.0),
+            (1, 2, 0.8),
+            (2, 3, 1.2),
+            (0, 3, 0.6),
+        ]
+
+        best_positions, best_couplings, best_error = optimize_atom_positions(target_edges, n=n)
+
+        print("=== POSITIONS OPTIMISÉES ===")
+        for i, pos in enumerate(best_positions):
+            print(f"Atome {i}: ({pos[0]:.6f}, {pos[1]:.6f})")
+        print(f"\nErreur de mapping = {best_error:.6f}")
+
+        omega_prep = 2 * np.pi * 2.0
+        prep_duration = 125
+
+        omega_peak = 2 * np.pi * 2.0
+        rise_duration = 1000
+        hold_duration = 1000
+        fall_duration = 26000
+
+        delta_start = np.pi
+        delta_hold = -np.pi / 2
+        delta_end = -np.pi
+
+        sampling_rate = 0.05
+        scale = 15.5
+
+        pulser_out = evaluate_smooth_pulser_final_state(
+            n=n,
+            positions=best_positions,
+            target_edges=target_edges,
+            omega_prep=omega_prep,
+            prep_duration=prep_duration,
+            omega_peak=omega_peak,
+            rise_duration=rise_duration,
+            hold_duration=hold_duration,
+            fall_duration=fall_duration,
+            delta_start=delta_start,
+            delta_hold=delta_hold,
+            delta_end=delta_end,
+            sampling_rate=sampling_rate,
+            scale=scale,
+        )
+
+        corrs = compute_edge_correlators(pulser_out["rho_T"], n, target_edges)
+
+        try:
+            hybrid_out = run_hybrid_on_pulser_output(
+                n=n,
+                target_edges=target_edges,
+                pulser_out=pulser_out,
+                corrs=corrs,
+                seed=1234,
+                n_roundings=64,
+            )
+        except ImportError as e:
+            print("\nImpossible de lancer l'étape SDP hybride.")
+            print(e)
+            print("Installe cvxpy dans l'environnement actif, puis relance ce mode.")
+        else:
+            print("=== RÉSULTAT PULSER ===")
+            print(f"Ratio Pulser      = {pulser_out['ratio_pulser']:.6f}")
+            print(f"E Pulser in QMC   = {pulser_out['E_pulser_in_qmc']:.6f}")
+
+            print("\n=== RÉSULTAT ROUNDING ===")
+            print(f"SDP status        = {hybrid_out['sdp_status']}")
+            print(f"Best seed         = {hybrid_out['best_rounding_seed']}")
+            print(f"N roundings       = {hybrid_out['n_roundings']}")
+            print(f"Ratio Product     = {hybrid_out['ratio_product']:.6f}")
+            print(f"E Product in QMC  = {hybrid_out['E_product_in_qmc']:.6f}")
+
+            print("\n=== RÉSULTAT HYBRIDE FINAL ===")
+            print(f"Winner            = {hybrid_out['winner']}")
+            print(f"Ratio Hybrid      = {hybrid_out['ratio_hybrid']:.6f}")
+            print(f"E Hybrid in QMC   = {hybrid_out['E_hybrid_in_qmc']:.6f}")
+
+    # ====================== ÉTUDE MULTI-GRAPHES HYBRIDE ======================
+    elif RUN_HYBRID_GRAPH_STUDY:
+        print("\nMode ÉTUDE MULTI-GRAPHES HYBRIDE activé\n")
+
+        n = 6
+        graph_sample_sizes = [20, 50, 100]
+        edge_prob = 0.6
+        w_min = 0.5
+        w_max = 1.5
+        seed = 42
+        require_connected = True
+
+        omega_prep = 2 * np.pi * 2.0
+        prep_duration = 125
+        omega_peak = 2 * np.pi * 2.0
+        rise_duration = 1000
+        hold_duration = 1000
+        fall_duration = 26000
+        delta_start = np.pi
+        delta_hold = -np.pi / 2
+        delta_end = -np.pi
+        sampling_rate = 0.05
+        scale = 15.5
+        n_roundings = 64
+
+        scaling_summary = []
+        run_tag = f"n{n}"
+
+        try:
+            for n_graphs in graph_sample_sizes:
+                print("\n" + "-" * 80)
+                print(f"Campagne hybride : n_graphs = {n_graphs}")
+                print("-" * 80)
+
+                study_out = study_fixed_hybrid_sequence_on_random_graphs(
+                    n=n,
+                    n_graphs=n_graphs,
+                    edge_prob=edge_prob,
+                    w_min=w_min,
+                    w_max=w_max,
+                    omega_prep=omega_prep,
+                    prep_duration=prep_duration,
+                    omega_peak=omega_peak,
+                    rise_duration=rise_duration,
+                    hold_duration=hold_duration,
+                    fall_duration=fall_duration,
+                    delta_start=delta_start,
+                    delta_hold=delta_hold,
+                    delta_end=delta_end,
+                    sampling_rate=sampling_rate,
+                    scale=scale,
+                    n_roundings=n_roundings,
+                    seed=seed,
+                    require_connected=require_connected,
+                )
+
+                summary = study_out["summary"]
+                results = study_out["results"]
+                scaling_summary.append(summary)
+
+                print("\n=== RÉSUMÉ COMPACT ===")
+                print(f"ratio_pulser_mean      = {summary['ratio_pulser_mean']:.6f}")
+                print(f"ratio_product_mean     = {summary['ratio_product_mean']:.6f}")
+                print(f"ratio_hybrid_mean      = {summary['ratio_hybrid_mean']:.6f}")
+                print(f"rounding_win_count     = {summary['rounding_win_count']}")
+                print(f"pulser_win_count       = {summary['pulser_win_count']}")
+                print(f"mapping_error_mean     = {summary['mapping_error_mean']:.6f}")
+
+                if SAVE_RESULTS:
+                    results_path = save_json_data(results, f"hybrid_graph_study_{run_tag}_{n_graphs}.json")
+                    summary_path = save_json_data(summary, f"hybrid_graph_study_{run_tag}_{n_graphs}_summary.json")
+                    scatter_path = figure_output_path(f"figure_hybrid_vs_pulser_{run_tag}_{n_graphs}.png")
+                    dist_path = figure_output_path(f"figure_hybrid_distribution_{run_tag}_{n_graphs}.png")
+
+                    plot_hybrid_vs_pulser_scatter(
+                        results,
+                        save_path=scatter_path,
+                        show=False,
+                    )
+                    plot_hybrid_distribution(
+                        results,
+                        save_path=dist_path,
+                        show=False,
+                    )
+
+                    print("\n✅ Fichiers sauvegardés :")
+                    print(f"   - {results_path}")
+                    print(f"   - {summary_path}")
+                    print(f"   - {scatter_path}")
+                    print(f"   - {dist_path}")
+
+        except ImportError as e:
+            print("\nImpossible de lancer l'étude hybride complète.")
+            print(e)
+            print("Installe cvxpy dans l'environnement actif, puis relance ce mode.")
+        else:
+            print("\n" + "=" * 80)
+            print("RÉSUMÉ GLOBAL FINAL")
+            print("=" * 80)
+            for row in scaling_summary:
+                print(
+                    f"n_graphs={row['n_graphs']:3d} | "
+                    f"pulser_mean={row['ratio_pulser_mean']:.6f} | "
+                    f"product_mean={row['ratio_product_mean']:.6f} | "
+                    f"hybrid_mean={row['ratio_hybrid_mean']:.6f} | "
+                    f"rounding_wins={row['rounding_win_count']:3d} | "
+                    f"pulser_wins={row['pulser_win_count']:3d} | "
+                    f"mapping_mean={row['mapping_error_mean']:.6f}"
+                )
+
+            if SAVE_RESULTS:
+                scaling_path = save_json_data(scaling_summary, f"hybrid_graph_study_{run_tag}_scaling_summary.json")
+
+                plot_hybrid_scaling_summary(
+                    scaling_summary,
+                    save_path=figure_output_path(f"figure_hybrid_scaling_{run_tag}.png"),
+                    show=False,
+                )
+
+                print("\n✅ Fichiers globaux sauvegardés :")
+                print(f"   - {scaling_path}")
+                print(f"   - {figure_output_path(f'figure_hybrid_scaling_{run_tag}.png')}")
+
+    # ====================== ÉTUDE STRUCTURE DU GRAPHE ======================
+    elif RUN_GRAPH_STRUCTURE_STUDY:
+        print("\nMode ÉTUDE STRUCTURE DU GRAPHE activé\n")
+
+        n = 4
+        n_graphs = 200
+        study_level = "proxy_exact"
+        edge_prob = 0.6
+        w_min = 0.5
+        w_max = 1.5
+        seed = 42
+        require_connected = True
+
+        omega_prep = 2 * np.pi * 2.0
+        prep_duration = 125
+        omega_peak = 2 * np.pi * 2.0
+        rise_duration = 1000
+        hold_duration = 1000
+        fall_duration = 26000
+        delta_start = np.pi
+        delta_hold = -np.pi / 2
+        delta_end = -np.pi
+        sampling_rate = 0.05
+        scale = 15.5
+        n_roundings = 64
+
+        study_out = study_graph_structure_on_random_graphs(
+            n=n,
+            n_graphs=n_graphs,
+            level=study_level,
+            edge_prob=edge_prob,
+            w_min=w_min,
+            w_max=w_max,
+            seed=seed,
+            require_connected=require_connected,
+            omega_prep=omega_prep,
+            prep_duration=prep_duration,
+            omega_peak=omega_peak,
+            rise_duration=rise_duration,
+            hold_duration=hold_duration,
+            fall_duration=fall_duration,
+            delta_start=delta_start,
+            delta_hold=delta_hold,
+            delta_end=delta_end,
+            sampling_rate=sampling_rate,
+            scale=scale,
+            n_roundings=n_roundings,
+        )
+
+        results = study_out["results"]
+        summary = study_out["summary"]
+        category_summary = study_out["category_summary"]
+        top_flop = study_out["top_flop"]
+        conclusion_lines = study_out["conclusion_lines"]
+
+        print("\n=== RÉSUMÉ STRUCTUREL ===")
+        print(f"n_graphs                  = {summary['n_graphs']}")
+        print(f"mapping_error_mean        = {summary['metrics']['mapping_error']['mean']:.6f}")
+        print(f"ratio_proxy_exact_mean    = {summary['metrics']['ratio_proxy_exact']['mean']:.6f}")
+        print(f"density_mean              = {summary['metrics']['density']['mean']:.6f}")
+        print(f"avg_degree_mean           = {summary['metrics']['avg_degree']['mean']:.6f}")
+        print(f"corr(density, error)      = {summary['correlations']['mapping_error']['density']:.6f}")
+        print(f"corr(avg_degree, error)   = {summary['correlations']['mapping_error']['avg_degree']:.6f}")
+        print(
+            f"corr(density, proxy)      = "
+            f"{summary['correlations']['ratio_proxy_exact']['density']:.6f}"
+        )
+        print("\n=== CONCLUSION PAR TYPES ===")
+        for line in conclusion_lines:
+            print(f"- {line}")
+
+        if SAVE_RESULTS:
+            level_tag = "" if study_level == "proxy_exact" else f"_{study_level}"
+            results_path = save_json_data(results, f"graph_structure_study{level_tag}_n{n}.json")
+            summary_path = save_json_data(summary, f"graph_structure_study{level_tag}_n{n}_summary.json")
+            category_summary_path = save_json_data(
+                category_summary,
+                f"graph_structure_categories{level_tag}_n{n}_summary.json",
+            )
+            top_flop_path = save_json_data(
+                top_flop,
+                f"graph_structure_top_flop{level_tag}_n{n}.json",
+            )
+
+            map_density_path = figure_output_path(f"figure_mapping_vs_density{level_tag}_n{n}.png")
+            map_avg_degree_path = figure_output_path(f"figure_mapping_vs_avg_degree{level_tag}_n{n}.png")
+            map_max_degree_path = figure_output_path(f"figure_mapping_vs_max_degree{level_tag}_n{n}.png")
+            proxy_density_path = figure_output_path(f"figure_proxy_vs_density{level_tag}_n{n}.png")
+            proxy_degree_path = figure_output_path(f"figure_proxy_vs_degree{level_tag}_n{n}.png")
+            connectivity_path = figure_output_path(
+                f"figure_mapping_by_connectivity{level_tag}_n{n}.png"
+            )
+            graph_type_mapping_path = figure_output_path(
+                f"figure_mapping_by_graph_type{level_tag}_n{n}.png"
+            )
+            graph_type_proxy_path = figure_output_path(
+                f"figure_proxy_by_graph_type{level_tag}_n{n}.png"
+            )
+            graph_family_mapping_path = figure_output_path(
+                f"figure_mapping_by_graph_family{level_tag}_n{n}.png"
+            )
+
+            plot_mapping_vs_density(results, save_path=map_density_path, show=False)
+            plot_mapping_vs_avg_degree(results, save_path=map_avg_degree_path, show=False)
+            plot_mapping_vs_max_degree(results, save_path=map_max_degree_path, show=False)
+            plot_proxy_vs_density(results, save_path=proxy_density_path, show=False)
+            plot_proxy_vs_avg_degree(results, save_path=proxy_degree_path, show=False)
+            plot_mapping_error_by_connectivity_bucket(
+                results,
+                save_path=connectivity_path,
+                show=False,
+            )
+            plot_mapping_by_graph_type(results, save_path=graph_type_mapping_path, show=False)
+            plot_proxy_by_graph_type(results, save_path=graph_type_proxy_path, show=False)
+            plot_mapping_by_graph_family(results, save_path=graph_family_mapping_path, show=False)
+
+            saved_paths = [
+                results_path,
+                summary_path,
+                category_summary_path,
+                top_flop_path,
+                map_density_path,
+                map_avg_degree_path,
+                map_max_degree_path,
+                proxy_density_path,
+                proxy_degree_path,
+                connectivity_path,
+                graph_type_mapping_path,
+                graph_type_proxy_path,
+                graph_family_mapping_path,
+            ]
+
+            if study_level == "hybrid":
+                hybrid_density_path = figure_output_path(
+                    f"figure_hybrid_vs_density{level_tag}_n{n}.png"
+                )
+                hybrid_graph_type_path = figure_output_path(
+                    f"figure_hybrid_by_graph_type{level_tag}_n{n}.png"
+                )
+                plot_hybrid_vs_density(results, save_path=hybrid_density_path, show=False)
+                plot_hybrid_by_graph_type(results, save_path=hybrid_graph_type_path, show=False)
+                saved_paths.extend([hybrid_density_path, hybrid_graph_type_path])
+
+            print("\n✅ Fichiers sauvegardés :")
+            for path in saved_paths:
+                print(f"   - {path}")
+
+    # ====================== ÉTUDE MULTI-GRAPHES SMOOTH (n=4) ======================
     elif RUN_PULSER_SMOOTH_GRAPH_STUDY:
         print("\nMode ÉTUDE MULTI-GRAPHES SMOOTH activé\n")
 
@@ -691,20 +1069,17 @@ if __name__ == "__main__":
             plot_smooth_graph_study_article(
                 results,
                 summary=summary,
-                save_paths="figure_smooth_graph_study_n4.png",
+                save_paths=figure_output_path("figure_smooth_graph_study_n4.png"),
                 show=False,
             )
 
-            with open("pulser_smooth_graph_study_n4.json", "w", encoding="utf-8") as f:
-                json.dump(results, f, indent=2, ensure_ascii=False)
-
-            with open("pulser_smooth_graph_study_n4_summary.json", "w", encoding="utf-8") as f:
-                json.dump(summary, f, indent=2, ensure_ascii=False)
+            results_path = save_json_data(results, "pulser_smooth_graph_study_n4.json")
+            summary_path = save_json_data(summary, "pulser_smooth_graph_study_n4_summary.json")
 
             print("\n✅ Résultats sauvegardés dans :")
-            print("   - pulser_smooth_graph_study_n4.json")
-            print("   - pulser_smooth_graph_study_n4_summary.json")
-            print("   - figure_smooth_graph_study_n4.png")
+            print(f"   - {results_path}")
+            print(f"   - {summary_path}")
+            print(f"   - {figure_output_path('figure_smooth_graph_study_n4.png')}")
     
     else:
         print("Aucun mode activé.")

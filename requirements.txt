@@ -1,0 +1,7 @@
+numpy
+scipy
+matplotlib
+qutip
+pulser
+pulser-simulation
+cvxpy

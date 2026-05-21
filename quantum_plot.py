@@ -1,3 +1,7 @@
+import os
+
+os.environ.setdefault("MPLCONFIGDIR", "/tmp")
+
 import matplotlib
 
 matplotlib.use("Agg")
@@ -183,7 +187,6 @@ def plot_smooth_graph_study_article(results, summary=None, save_paths=None, show
     if not results:
         raise ValueError("La liste results est vide.")
 
-    graph_ids = np.array([r.get("graph_id", i) for i, r in enumerate(results)], dtype=int)
     x = np.arange(len(results))
 
     ratio_pulser = np.array([r["ratio_pulser"] for r in results], dtype=float)
@@ -271,7 +274,8 @@ def plot_smooth_graph_study_article(results, summary=None, save_paths=None, show
     ax_map.set_ylabel("Erreur de mapping", fontsize=11)
     ax_map.set_xlabel("Instance de graphe aléatoire", fontsize=11)
     ax_map.set_xticks(x)
-    ax_map.set_xticklabels([str(i) for i in graph_ids])
+    ax_map.set_xticklabels([])
+    ax_map.tick_params(axis="x", length=0)
     ax_map.grid(True, axis="y", alpha=0.25)
 
     note = (
