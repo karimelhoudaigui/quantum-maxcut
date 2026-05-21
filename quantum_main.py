@@ -30,6 +30,20 @@ from quantum_hybrid import (
     plot_hybrid_vs_pulser_scatter,
     study_fixed_hybrid_sequence_on_random_graphs,
 )
+from graph_structure_study import (
+    plot_hybrid_by_graph_type,
+    plot_hybrid_vs_density,
+    plot_mapping_by_graph_family,
+    plot_mapping_by_graph_type,
+    plot_mapping_error_by_connectivity_bucket,
+    plot_mapping_vs_avg_degree,
+    plot_mapping_vs_density,
+    plot_mapping_vs_max_degree,
+    plot_proxy_by_graph_type,
+    plot_proxy_vs_avg_degree,
+    plot_proxy_vs_density,
+    study_graph_structure_on_random_graphs,
+)
 
 
 if __name__ == "__main__":
@@ -51,7 +65,9 @@ if __name__ == "__main__":
     RUN_PULSER_SMOOTH_GRAPH_STUDY = False
 
     RUN_HYBRID_SINGLE_EXPERIMENT = False
-    RUN_HYBRID_GRAPH_STUDY = True
+    RUN_HYBRID_GRAPH_STUDY = False
+
+    RUN_GRAPH_STRUCTURE_STUDY = True
     SAVE_RESULTS = True
 
     active_modes = [
@@ -65,6 +81,7 @@ if __name__ == "__main__":
         RUN_PULSER_SMOOTH_GRAPH_STUDY,
         RUN_HYBRID_SINGLE_EXPERIMENT,
         RUN_HYBRID_GRAPH_STUDY,
+        RUN_GRAPH_STRUCTURE_STUDY,
     ]
 
     if sum(active_modes) > 1:
@@ -81,6 +98,7 @@ if __name__ == "__main__":
     print(f"  RUN_PULSER_SMOOTH_GRAPH_STUDY = {RUN_PULSER_SMOOTH_GRAPH_STUDY}")
     print(f"  RUN_HYBRID_SINGLE_EXPERIMENT = {RUN_HYBRID_SINGLE_EXPERIMENT}")
     print(f"  RUN_HYBRID_GRAPH_STUDY       = {RUN_HYBRID_GRAPH_STUDY}")
+    print(f"  RUN_GRAPH_STRUCTURE_STUDY    = {RUN_GRAPH_STRUCTURE_STUDY}")
     print()
     output_dirs = ensure_results_dirs()
     n_values = [4, 5, 6, 7, 8]
@@ -814,6 +832,153 @@ if __name__ == "__main__":
                 print("\n✅ Fichiers globaux sauvegardés :")
                 print(f"   - {scaling_path}")
                 print(f"   - {figure_output_path(f'figure_hybrid_scaling_{run_tag}.png')}")
+
+    # ====================== ÉTUDE STRUCTURE DU GRAPHE ======================
+    elif RUN_GRAPH_STRUCTURE_STUDY:
+        print("\nMode ÉTUDE STRUCTURE DU GRAPHE activé\n")
+
+        n = 4
+        n_graphs = 200
+        study_level = "proxy_exact"
+        edge_prob = 0.6
+        w_min = 0.5
+        w_max = 1.5
+        seed = 42
+        require_connected = True
+
+        omega_prep = 2 * np.pi * 2.0
+        prep_duration = 125
+        omega_peak = 2 * np.pi * 2.0
+        rise_duration = 1000
+        hold_duration = 1000
+        fall_duration = 26000
+        delta_start = np.pi
+        delta_hold = -np.pi / 2
+        delta_end = -np.pi
+        sampling_rate = 0.05
+        scale = 15.5
+        n_roundings = 64
+
+        study_out = study_graph_structure_on_random_graphs(
+            n=n,
+            n_graphs=n_graphs,
+            level=study_level,
+            edge_prob=edge_prob,
+            w_min=w_min,
+            w_max=w_max,
+            seed=seed,
+            require_connected=require_connected,
+            omega_prep=omega_prep,
+            prep_duration=prep_duration,
+            omega_peak=omega_peak,
+            rise_duration=rise_duration,
+            hold_duration=hold_duration,
+            fall_duration=fall_duration,
+            delta_start=delta_start,
+            delta_hold=delta_hold,
+            delta_end=delta_end,
+            sampling_rate=sampling_rate,
+            scale=scale,
+            n_roundings=n_roundings,
+        )
+
+        results = study_out["results"]
+        summary = study_out["summary"]
+        category_summary = study_out["category_summary"]
+        top_flop = study_out["top_flop"]
+        conclusion_lines = study_out["conclusion_lines"]
+
+        print("\n=== RÉSUMÉ STRUCTUREL ===")
+        print(f"n_graphs                  = {summary['n_graphs']}")
+        print(f"mapping_error_mean        = {summary['metrics']['mapping_error']['mean']:.6f}")
+        print(f"ratio_proxy_exact_mean    = {summary['metrics']['ratio_proxy_exact']['mean']:.6f}")
+        print(f"density_mean              = {summary['metrics']['density']['mean']:.6f}")
+        print(f"avg_degree_mean           = {summary['metrics']['avg_degree']['mean']:.6f}")
+        print(f"corr(density, error)      = {summary['correlations']['mapping_error']['density']:.6f}")
+        print(f"corr(avg_degree, error)   = {summary['correlations']['mapping_error']['avg_degree']:.6f}")
+        print(
+            f"corr(density, proxy)      = "
+            f"{summary['correlations']['ratio_proxy_exact']['density']:.6f}"
+        )
+        print("\n=== CONCLUSION PAR TYPES ===")
+        for line in conclusion_lines:
+            print(f"- {line}")
+
+        if SAVE_RESULTS:
+            level_tag = "" if study_level == "proxy_exact" else f"_{study_level}"
+            results_path = save_json_data(results, f"graph_structure_study{level_tag}_n{n}.json")
+            summary_path = save_json_data(summary, f"graph_structure_study{level_tag}_n{n}_summary.json")
+            category_summary_path = save_json_data(
+                category_summary,
+                f"graph_structure_categories{level_tag}_n{n}_summary.json",
+            )
+            top_flop_path = save_json_data(
+                top_flop,
+                f"graph_structure_top_flop{level_tag}_n{n}.json",
+            )
+
+            map_density_path = figure_output_path(f"figure_mapping_vs_density{level_tag}_n{n}.png")
+            map_avg_degree_path = figure_output_path(f"figure_mapping_vs_avg_degree{level_tag}_n{n}.png")
+            map_max_degree_path = figure_output_path(f"figure_mapping_vs_max_degree{level_tag}_n{n}.png")
+            proxy_density_path = figure_output_path(f"figure_proxy_vs_density{level_tag}_n{n}.png")
+            proxy_degree_path = figure_output_path(f"figure_proxy_vs_degree{level_tag}_n{n}.png")
+            connectivity_path = figure_output_path(
+                f"figure_mapping_by_connectivity{level_tag}_n{n}.png"
+            )
+            graph_type_mapping_path = figure_output_path(
+                f"figure_mapping_by_graph_type{level_tag}_n{n}.png"
+            )
+            graph_type_proxy_path = figure_output_path(
+                f"figure_proxy_by_graph_type{level_tag}_n{n}.png"
+            )
+            graph_family_mapping_path = figure_output_path(
+                f"figure_mapping_by_graph_family{level_tag}_n{n}.png"
+            )
+
+            plot_mapping_vs_density(results, save_path=map_density_path, show=False)
+            plot_mapping_vs_avg_degree(results, save_path=map_avg_degree_path, show=False)
+            plot_mapping_vs_max_degree(results, save_path=map_max_degree_path, show=False)
+            plot_proxy_vs_density(results, save_path=proxy_density_path, show=False)
+            plot_proxy_vs_avg_degree(results, save_path=proxy_degree_path, show=False)
+            plot_mapping_error_by_connectivity_bucket(
+                results,
+                save_path=connectivity_path,
+                show=False,
+            )
+            plot_mapping_by_graph_type(results, save_path=graph_type_mapping_path, show=False)
+            plot_proxy_by_graph_type(results, save_path=graph_type_proxy_path, show=False)
+            plot_mapping_by_graph_family(results, save_path=graph_family_mapping_path, show=False)
+
+            saved_paths = [
+                results_path,
+                summary_path,
+                category_summary_path,
+                top_flop_path,
+                map_density_path,
+                map_avg_degree_path,
+                map_max_degree_path,
+                proxy_density_path,
+                proxy_degree_path,
+                connectivity_path,
+                graph_type_mapping_path,
+                graph_type_proxy_path,
+                graph_family_mapping_path,
+            ]
+
+            if study_level == "hybrid":
+                hybrid_density_path = figure_output_path(
+                    f"figure_hybrid_vs_density{level_tag}_n{n}.png"
+                )
+                hybrid_graph_type_path = figure_output_path(
+                    f"figure_hybrid_by_graph_type{level_tag}_n{n}.png"
+                )
+                plot_hybrid_vs_density(results, save_path=hybrid_density_path, show=False)
+                plot_hybrid_by_graph_type(results, save_path=hybrid_graph_type_path, show=False)
+                saved_paths.extend([hybrid_density_path, hybrid_graph_type_path])
+
+            print("\n✅ Fichiers sauvegardés :")
+            for path in saved_paths:
+                print(f"   - {path}")
 
     # ====================== ÉTUDE MULTI-GRAPHES SMOOTH (n=4) ======================
     elif RUN_PULSER_SMOOTH_GRAPH_STUDY:

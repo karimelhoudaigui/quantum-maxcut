@@ -56,6 +56,7 @@ Note: the historical filename is `quantum_optmization.py` in this repository.
 - QuTiP
 - Pulser
 - pulser-simulation
+- CVXPY (pour les modes SDP / hybride)
 
 PulserDiff/PyTorch are only needed for the older PulserDiff optimization experiments, not for the core smooth-sequence and frontend workflow.
 
@@ -68,7 +69,7 @@ cd quantum-maxcut
 python -m venv .venv
 source .venv/bin/activate
 
-pip install numpy scipy matplotlib qutip pulser pulser-simulation
+pip install -r requirements.txt
 ```
 
 Optional, for PulserDiff-related experiments:
