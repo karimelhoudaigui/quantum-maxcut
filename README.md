@@ -1,78 +1,118 @@
 # Quantum MaxCut - Rydberg Proxy with Pulser
 
-Quantum MaxCut is a research-oriented framework for studying MaxCut mappings on neutral-atom arrays. It combines exact Hamiltonian utilities, geometric atom-position optimization, Pulser sequence construction, pulse-parameter searches, smooth annealing protocols, random-graph studies, and a lightweight local frontend for inspecting results and generating figures.
+Quantum MaxCut is a research-oriented Python framework for studying MaxCut mappings on neutral-atom arrays. It implements a full pipeline from weighted graph embedding to Rydberg XY proxy evaluation, Pulser pulse-sequence preparation, hybrid SDP rounding, and result visualization.
 
-The current codebase focuses on an XY Rydberg proxy Hamiltonian and on understanding when performance is limited by the geometric embedding versus by the dynamical state preparation.
+The repository is designed to support:
+- geometric embedding of graph weights via distance-dependent couplings,
+- exact quantum benchmark references for small graphs,
+- smooth adiabatic-style Pulser sequences,
+- hybrid classical/quantum reconstruction with SDP and rounding,
+- structure-aware graph studies and dashboard exploration.
 
-## Features
+## Mathematical Formulation
 
-- **Quantum MaxCut formulation**: builds the QMC Hamiltonian and computes exact reference energies.
-- **Rydberg XY proxy**: maps weighted graph edges to geometry-induced XY couplings.
-- **Atom-position optimization**: optimizes 2D atom coordinates to match target edge weights.
-- **Pulser sequence toolkit**: builds adiabatic, piecewise, and smooth microwave-control sequences.
-- **Smooth pulse studies**: evaluates fixed smooth protocols, grid-searches their parameters, and studies transfer across random graphs.
-- **Benchmarking suite**: evaluates proxy quality across many random instances and system sizes.
-- **Article-ready plots**: generates PNG figures for benchmark, grid-search, and multi-graph analyses.
-- **Local frontend dashboard**: choose an experiment, inspect metrics/tables, preview plots, and generate PNG outputs from a browser.
+The main quantum problems inside this repository are:
 
-## Project Structure
+- The Quantum MaxCut Hamiltonian:
+
+```math
+H_{\mathrm{qmc}} = - \sum_{(i,j)\in E} w_{ij} \left(I - X_i X_j - Y_i Y_j - Z_i Z_j\right)
+```
+
+- The Rydberg XY proxy Hamiltonian:
+
+```math
+H_r = \sum_{(i,j)\in E} J_{ij} \left(X_i X_j + Y_i Y_j\right),\qquad J_{ij} = \frac{C_3}{r_{ij}^3}
+```
+
+- The geometry mapping objective for atomic positions $\mathbf r$:
+
+```math
+f(\mathbf r) = \sqrt{\frac{\sum_{(i,j)} \left(J_{ij}(\mathbf r) - w_{ij}\right)^2}{\sum_{(i,j)} w_{ij}^2}}
+```
+
+- The proxy quality ratio used to compare states:
+
+```math
+\mathrm{Ratio} = \frac{\langle \psi_r | H_{\mathrm{qmc}} | \psi_r \rangle}{E_0(H_{\mathrm{qmc}})}
+```
+
+## Repository Layout
 
 ```text
 ├── quantum_main.py                    # Main experiment launcher
-├── quantum_utils.py                   # Hamiltonians, operators, exact diagonalization, couplings
-├── quantum_optmization.py             # Atom-position optimization
+├── quantum_utils.py                   # Hamiltonians, Pauli operators, exact diagonalization, utility functions
+├── quantum_optmization.py             # Atom-position optimization for geometry embedding
 ├── quantum_benchmark.py               # Benchmark pipelines over random graph instances
-├── quantum_plot.py                    # Matplotlib figure generation
-├── quantum_io.py                      # JSON/CSV serialization helpers
-├── quantum_config.py                  # Configuration constants
+├── quantum_plot.py                    # Matplotlib figure generation helpers
+├── quantum_io.py                      # JSON/CSV serialization and result I/O helpers
+├── quantum_config.py                  # Global numerical constants and defaults
+├── graph_structure_study.py           # Graph-structure analysis and classification
+├── requirements.txt                   # Python dependency manifest
+├── .github/workflows/python-app.yml   # GitHub Actions CI workflow
 │
-├── quantum_pulser/                    # Pulser package
-│   ├── __init__.py                    # Public exports
-│   ├── pulser_core.py                 # Shared state, simulation, correlator utilities
-│   ├── pulser_sequences.py            # Classical annealing / adiabatic / piecewise sequences
-│   ├── pulser_eval.py                 # Evaluation functions for standard and piecewise sequences
-│   ├── pulser_search.py               # Random search and adiabatic grid search
-│   ├── pulser_smooth.py               # Smooth sequence, evaluation, and grid search
-│   └── pulser_graph_study.py          # Fixed smooth sequence on random graph ensembles
+├── quantum_pulser/                    # Pulser-based state preparation and evaluation
+│   ├── __init__.py                    # Public exports for the Pulser module
+│   ├── pulser_core.py                 # Sequence simulation and correlator extraction
+│   ├── pulser_sequences.py            # Adiabatic, piecewise, and smooth sequences
+│   ├── pulser_eval.py                 # Evaluation of Pulser final states
+│   ├── pulser_search.py               # Random search / grid search utilities
+│   ├── pulser_smooth.py               # Smooth-sequence implementation and sweep tools
+│   └── pulser_graph_study.py          # Graph study helper functions for smooth sequences
 │
-├── quantum_frontend.py                # Local web server for result exploration
-├── quantum_frontend_plots.py          # Extra PNG plot helpers for the frontend
-└── frontend/
-    ├── index.html                     # Browser UI
-    ├── styles.css                     # Dashboard styling
-    └── app.js                         # Frontend logic and SVG plots
+├── quantum_hybrid/                    # Hybrid SDP and rounding pipeline
+│   ├── __init__.py
+│   ├── hybrid_core.py                 # Hybrid optimization primitives and MaxCut helpers
+│   ├── hybrid_eval.py                 # Hybrid evaluation and scoring helpers
+│   ├── hybrid_graph_study.py          # High-level hybrid study scripts and plot helpers
+│   ├── hybrid_rounding.py             # SDP rounding to product states and hyperplane rounding
+│   └── hybrid_sdp.py                  # SDP relaxation over pseudo-moment matrices
+│
+├── quantum_frontend.py                # Lightweight local dashboard server
+├── quantum_frontend_plots.py          # Plot generation code used by the dashboard
+└── frontend/                          # Static browser UI
+    ├── index.html
+    ├── styles.css
+    └── app.js
 ```
 
-Note: the historical filename is `quantum_optmization.py` in this repository.
+## What’s New
+
+This repository now contains the full `quantum_hybrid/` pipeline and the new `graph_structure_study.py` module, with:
+- hybrid SDP relaxation of proxy correlators,
+- product-state rounding from the SDP solution,
+- graph categorization by density, degree, hub structure and family,
+- graph-structure plots and summary JSON outputs,
+- a dedicated family-wise hybrid pipeline study at `n=4` avec sorties CSV/PNG dans `results_graph_families_full_pipeline/`.
+
+## Dependencies
+
+The project uses Python and these core scientific libraries:
+
+- `numpy`
+- `scipy`
+- `matplotlib`
+- `qutip`
+- `pulser`
+- `pulser-simulation`
+- `cvxpy`
+
+Legacy/optional experiments may also require:
+
+- `torch`, `torchvision`, `torchaudio`
+- `pulser-diff` (external repository)
 
 ## Installation
-
-### Requirements
-
-- Python 3.9+
-- NumPy
-- SciPy
-- Matplotlib
-- QuTiP
-- Pulser
-- pulser-simulation
-- CVXPY (pour les modes SDP / hybride)
-
-PulserDiff/PyTorch are only needed for the older PulserDiff optimization experiments, not for the core smooth-sequence and frontend workflow.
-
-### Setup
 
 ```bash
 git clone https://github.com/karimelhoudaigui/quantum-maxcut.git
 cd quantum-maxcut
-
 python -m venv .venv
 source .venv/bin/activate
-
 pip install -r requirements.txt
 ```
 
-Optional, for PulserDiff-related experiments:
+### Optional legacy setup
 
 ```bash
 pip install torch torchvision torchaudio
@@ -83,9 +123,11 @@ pip install .
 
 ## Usage
 
-### Run Experiments
+### Configure the main runner
 
-Edit the configuration flags at the top of `quantum_main.py`. Exactly one mode should be enabled at a time:
+`quantum_main.py` uses boolean flags at the top of the file to select a single execution mode. Only one mode should be `True` at a time.
+
+Example configuration:
 
 ```python
 RUN_BENCHMARK = False
@@ -95,30 +137,41 @@ RUN_PULSER_PARAM_SEARCH = False
 RUN_PULSER_GRID_SEARCH = False
 RUN_PULSER_SMOOTH_EXPERIMENT = False
 RUN_PULSER_SMOOTH_GRID_SEARCH = False
-RUN_PULSER_SMOOTH_GRAPH_STUDY = True
+RUN_HYBRID_SINGLE_EXPERIMENT = False
+RUN_HYBRID_GRAPH_STUDY = False
+RUN_GRAPH_STRUCTURE_STUDY = True
 ```
 
-Then run:
+### Run the selected experiment
 
 ```bash
 source .venv/bin/activate
 python quantum_main.py
 ```
 
-### Experiment Modes
+Pour lancer la nouvelle étude de la pipeline hybride par famille de graphes :
 
-- **RUN_BENCHMARK**: benchmarks the exact proxy quality across random graph instances and saves CSV/JSON summaries.
-- **RUN_SINGLE_TEST**: optimizes one small graph and prints geometry/coupling diagnostics.
-- **RUN_PULSER_EXPERIMENT**: runs a standard Pulser adiabatic sequence and scans annealing times.
-- **RUN_PULSER_PARAM_SEARCH**: random-searches piecewise pulse parameters.
-- **RUN_PULSER_GRID_SEARCH**: grid-searches adiabatic sequence parameters.
-- **RUN_PULSER_SMOOTH_EXPERIMENT**: evaluates the selected smooth sequence on a pilot graph.
-- **RUN_PULSER_SMOOTH_GRID_SEARCH**: grid-searches smooth pulse parameters.
-- **RUN_PULSER_SMOOTH_GRAPH_STUDY**: evaluates the fixed optimized smooth sequence over random weighted graphs at `n=4`.
+```bash
+python scripts/run_graph_family_full_pipeline.py --n 4 --num-instances 100 --seed 123
+```
+
+## Experiment Modes
+
+- `RUN_BENCHMARK`: benchmark proxy-quality and geometric embedding across random graphs.
+- `RUN_SINGLE_TEST`: run a single exact instance and display diagnostics.
+- `RUN_PULSER_EXPERIMENT`: execute standard Pulser adiabatic sequences.
+- `RUN_PULSER_PARAM_SEARCH`: random-search piecewise pulse parameters.
+- `RUN_PULSER_GRID_SEARCH`: grid-search adiabatic pulse parameters.
+- `RUN_PULSER_SMOOTH_EXPERIMENT`: run the selected smooth sequence on a pilot graph.
+- `RUN_PULSER_SMOOTH_GRID_SEARCH`: grid-search smooth sequence parameters.
+- `RUN_PULSER_SMOOTH_GRAPH_STUDY`: evaluate the best smooth sequence across random `n=4` graphs.
+- `RUN_HYBRID_SINGLE_EXPERIMENT`: one hybrid SDP + rounding experiment on a single instance.
+- `RUN_HYBRID_GRAPH_STUDY`: hybrid pipeline study over multiple graph instances.
+- `RUN_GRAPH_STRUCTURE_STUDY`: analyze graph structural properties and their impact on mapping/proxy quality.
 
 ## Local Dashboard
 
-The repository includes a modern local dashboard for exploring experiment outputs without opening notebooks or manually parsing JSON files. It is built with plain HTML/CSS/JavaScript and a lightweight Python standard-library server, so it does not require Streamlit, Dash, Plotly, or a frontend build step.
+The repository includes a local dashboard served from `quantum_frontend.py`. It is a static browser UI with no frontend build step.
 
 Start it with:
 
@@ -127,127 +180,63 @@ source .venv/bin/activate
 python quantum_frontend.py
 ```
 
-Open:
+Then open:
 
 ```text
 http://127.0.0.1:8765
 ```
 
-The dashboard detects available result files and exposes three experiment views:
+### Dashboard views
 
-### 1. Benchmark proxy
+- Benchmark proxy results
+- Smooth grid-search results
+- Smooth graph-study results
 
-This view summarizes the large-scale proxy benchmark. It is meant to answer:
+The dashboard reads JSON output files and generates SVG/PNG visualizations automatically.
 
-- how the Rydberg proxy quality changes with the number of qubits `n`
-- whether the geometric embedding error remains controlled across graph instances
-- how the proxy approximation ratio correlates with mapping error
+## Hybrid & Graph Structure Study
 
-Input files:
+### Hybrid pipeline
 
-```text
-benchmark_summary.csv
-benchmark_full.json
+The `quantum_hybrid/` module provides:
+- SDP relaxation from measured/estimated correlators,
+- pseudo-moment matrix construction,
+- product-state rounding via randomized projection,
+- additional MaxCut rounding baselines.
+
+The SDP formulation in this project is built over a pseudo-moment matrix $\Delta$ indexed by
+operators $\{I, X_1, Y_1, X_2, Y_2, \dots, X_n, Y_n\}$ with constraints:
+
+```math
+\Delta \succeq 0, \qquad \Delta_{I,I} = 1, \qquad \Delta_{X_i,X_i} = \Delta_{Y_i,Y_i} = 1
 ```
 
-Displayed outputs:
+and fixed correlator entries:
 
-- number of benchmarked instances
-- `n` range
-- average proxy ratio
-- average mapping error
-- ratio-by-system-size plot
-- ratio-versus-mapping diagnostic scatter plot
-
-PNG generation:
-
-```text
-figure1_mapping_error_vs_n.png
-figure2_ratio_vs_n.png
-figure3_ratio_vs_mapping_error.png
+```math
+\Delta_{X_i,X_j} = \langle X_i X_j \rangle, \qquad \Delta_{Y_i,Y_j} = \langle Y_i Y_j \rangle.
 ```
 
-### 2. Smooth grid search
+The objective is:
 
-This view analyzes the parameter search over smooth Pulser sequences. It is meant to identify which pulse schedule gives the best final-state quality.
-
-Input files:
-
-```text
-pulser_smooth_grid_search.json
-pulser_smooth_grid_search_best.json
+```math
+\min \operatorname{Tr}(C \Delta)
 ```
 
-Displayed outputs:
+where $C$ encodes the proxy cost matrix for $H_r$.
 
-- total number of tested parameter combinations
-- best Pulser ratio
-- best proxy overlap
-- best fall duration
-- top-20 smooth schedules ranked by `ratio_pulser`
-- ratio-versus-overlap diagnostic scatter plot
+### Graph structure analysis
 
-PNG generation:
+`graph_structure_study.py` computes graph descriptors and categories such as:
+- density, average degree, max degree,
+- clustering coefficient, sparsity, degree centralization,
+- graph family labels like `path`, `cycle`, `star`, `complete`, `generic_random`.
 
-```text
-figure_smooth_grid_search.png
-```
-
-### 3. Smooth multi-graph study
-
-This view studies whether the best smooth sequence found on a pilot case transfers to several random weighted graphs at `n=4`. It is the main visualization for the claim that the sequence produces non-trivial states across varied instances, while performance remains graph-dependent.
-
-Input files:
-
-```text
-pulser_smooth_graph_study_n4.json
-pulser_smooth_graph_study_n4_summary.json
-```
-
-Displayed outputs:
-
-- number of random graphs
-- mean Pulser ratio
-- min/max Pulser ratio
-- maximum mapping error
-- bar plot of `ratio_pulser` per graph
-- proxy-exact reference curve
-- mapping-error versus ratio diagnostic scatter plot
-
-PNG generation:
-
-```text
-figure_smooth_graph_study_n4.png
-```
-
-Use the **Générer PNG** button to regenerate figure files from the selected experiment.
-
-## Smooth Sequence Study
-
-The optimized smooth sequence used in the multi-graph study is:
-
-```python
-omega_prep = 2 * np.pi * 2.0
-prep_duration = 125
-
-omega_peak = 2 * np.pi * 2.0
-rise_duration = 1000
-hold_duration = 1000
-fall_duration = 26000
-
-delta_start = np.pi
-delta_hold = -np.pi / 2
-delta_end = -np.pi
-
-sampling_rate = 0.05
-scale = 15.5
-```
-
-A study over 10 random graphs at `n=4` showed that the fixed smooth sequence produces non-trivial states on varied instances. The average Pulser ratio is around `0.42`, with values ranging roughly from `0.23` to `0.62`. The geometric mapping error remains very small across the instances, suggesting that the dominant limitation is not the atom-position embedding but the dynamical preparation.
+It evaluates how graph structure impacts mapping error and proxy/hybrid performance.
 
 ## Output Files
 
-Typical generated files include:
+The repository generates result files and figures such as:
 
 ```text
 benchmark_summary.csv
@@ -260,59 +249,42 @@ pulser_smooth_grid_search.json
 pulser_smooth_grid_search_best.json
 pulser_smooth_graph_study_n4.json
 pulser_smooth_graph_study_n4_summary.json
+results_graph_families_full_pipeline/summary_by_family.csv
+results_graph_families_full_pipeline/all_instances_results.csv
+```
 
+and figures such as:
+
+```text
 figure1_mapping_error_vs_n.png
 figure2_ratio_vs_n.png
 figure3_ratio_vs_mapping_error.png
 figure_smooth_graph_study_n4.png
 figure_smooth_grid_search.png
+results_graph_families_full_pipeline/ratio_hybrid_by_graph_family.png
+results_graph_families_full_pipeline/gain_by_graph_family.png
+results_graph_families_full_pipeline/pulser_vs_hybrid_by_family.png
+results_graph_families_full_pipeline/mapping_error_by_family_full_pipeline.png
+results_graph_families_full_pipeline/ratio_vs_mapping_error_by_family.png
 ```
 
-The repository `.gitignore` excludes generated JSON/CSV/PNG files by default.
+Generated JSON, CSV and PNG files are excluded by `.gitignore`.
 
-## Core Algorithms
+## CI / Validation
 
-### 1. Geometric Embedding
+A GitHub Actions workflow is configured in `.github/workflows/python-app.yml` to:
+- install Python dependencies from `requirements.txt`,
+- compile all Python files to verify syntax.
 
-Target graph weights are compared to geometry-induced couplings:
+## Notes
 
-```text
-J_ij = c3 / R_ij^3
-```
-
-The optimizer minimizes the relative mapping error between target weights and available geometric couplings.
-
-### 2. XY Proxy Hamiltonian
-
-The proxy Hamiltonian uses geometry-induced XY couplings:
-
-```text
-H_r = Σ_ij J_ij (X_i X_j + Y_i Y_j)
-```
-
-This proxy is evaluated against the Quantum MaxCut Hamiltonian to measure how well the Rydberg geometry encodes the target instance.
-
-### 3. Smooth Dynamical Preparation
-
-The smooth sequence separates the protocol into:
-
-- preparation pulse
-- smooth rise to `omega_peak`
-- optional hold plateau
-- smooth fall with detuning sweep
-
-This structure makes it easier to study which part of the protocol controls final-state quality.
-
-## References
-
-- Pulser: https://github.com/pasqal-io/Pulser
-- PulserDiff: https://github.com/pasqal-io/pulser-diff
-- QuTiP: https://qutip.org/
-- MaxCut on Neutral Atoms: arXiv:2505.16744
+- The repository is research-oriented and currently focused on small systems (`n <= 8`) where exact diagonalization and SDP are feasible.
+- The directory `pulser-diff/` is an optional external experiment package and is not required for the main workflow.
+- `quantum_pulser_all/` contains additional legacy helper scripts from earlier PulserDiff experiments.
 
 ## Author
 
-Karim Elhoudaigui
+Karim El Houdaigui
 
 ## License
 
