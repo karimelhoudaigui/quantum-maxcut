@@ -155,6 +155,12 @@ Pour lancer la nouvelle étude de la pipeline hybride par famille de graphes :
 python scripts/run_graph_family_full_pipeline.py --n 4 --num-instances 100 --seed 123
 ```
 
+Pour lancer l'étude de mise à l'échelle par famille à n=4 :
+
+```bash
+python scripts/run_graph_family_scaling_analysis.py --n 4 --graph-sizes 20 50 100 150 --seed 123
+```
+
 ## Experiment Modes
 
 - `RUN_BENCHMARK`: benchmark proxy-quality and geometric embedding across random graphs.
