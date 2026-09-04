@@ -12,7 +12,7 @@ import {
   runLocalPipeline,
 } from "./localSimulator";
 
-const API_BASE = import.meta.env.DEV ? "" : import.meta.env.VITE_API_BASE_URL ?? "";
+const API_BASE = import.meta.env.DEV ? "" : (import.meta.env.VITE_API_BASE_URL ?? "").trim();
 const HAS_REMOTE_API = API_BASE.length > 0 || import.meta.env.DEV;
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -40,7 +40,7 @@ export function generateGraph(payload: GraphGenerateRequest): Promise<GraphRespo
   return request<GraphResponse>("/api/graph/generate", {
     method: "POST",
     body: JSON.stringify(payload),
-  });
+  }).catch(() => generateLocalGraph(payload));
 }
 
 export function runPipeline(graph: GraphResponse, annealing: AnnealingConfig): Promise<PipelineJob> {
@@ -56,7 +56,7 @@ export function runPipeline(graph: GraphResponse, annealing: AnnealingConfig): P
       n_roundings: annealing.n_roundings,
       seed: 1234,
     }),
-  });
+  }).catch(() => runLocalPipeline(graph, annealing));
 }
 
 export function getPipelineStatus(jobId: string): Promise<PipelineJob> {
@@ -64,7 +64,7 @@ export function getPipelineStatus(jobId: string): Promise<PipelineJob> {
     return getLocalPipelineStatus(jobId);
   }
 
-  return request<PipelineJob>(`/api/pipeline/${jobId}/status`);
+  return request<PipelineJob>(`/api/pipeline/${jobId}/status`).catch(() => getLocalPipelineStatus(jobId));
 }
 
 export function getFamilyResults(family = "all"): Promise<FamilyResultRow[]> {
@@ -72,5 +72,5 @@ export function getFamilyResults(family = "all"): Promise<FamilyResultRow[]> {
     return getLocalFamilyResults(family);
   }
 
-  return request<FamilyResultRow[]>(`/api/results/${family}`);
+  return request<FamilyResultRow[]>(`/api/results/${family}`).catch(() => getLocalFamilyResults(family));
 }
