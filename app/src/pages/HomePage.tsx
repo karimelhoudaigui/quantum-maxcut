@@ -12,6 +12,9 @@ import type { LucideIcon } from "lucide-react";
 import type { SimulationModule } from "../config/simulations";
 import { futureSimulationModules, simulationModules } from "../config/simulations";
 
+const simulationStackVideoMp4Src = `${import.meta.env.BASE_URL}media/simulation-stack-4k.mp4`;
+const simulationStackVideoMovSrc = `${import.meta.env.BASE_URL}media/simulation-stack-4k.mov`;
+
 interface HomePageProps {
   onNavigate: (route: string) => void;
 }
@@ -30,7 +33,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
               </div>
               <div>
                 <p className="text-sm font-semibold">Quantum Simulation Platform</p>
-                <p className="text-xs text-foreground/50">Scientific computing workspace · Créé par HYBQUANT</p>
+                <p className="text-xs text-foreground/50">Scientific computing workspace · Created by HYBQUANT</p>
               </div>
             </div>
             <div className="hidden items-center gap-2 rounded-md border border-white/10 bg-white/[0.045] px-3 py-2 text-xs text-foreground/60 backdrop-blur md:flex">
@@ -226,6 +229,19 @@ function HeroInstrument() {
       </div>
       <div className="absolute inset-x-8 bottom-8 top-24">
         <div className="relative h-full overflow-hidden rounded-2xl border border-white/10 bg-black/20">
+          <video
+            aria-hidden="true"
+            autoPlay
+            className="absolute inset-0 h-full w-full object-cover opacity-75"
+            loop
+            muted
+            playsInline
+            preload="metadata"
+          >
+            <source src={simulationStackVideoMp4Src} type="video/mp4" />
+            <source src={simulationStackVideoMovSrc} type="video/quicktime" />
+          </video>
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,7,13,0.1),rgba(5,7,13,0.62)),radial-gradient(circle_at_50%_45%,rgba(45,212,191,0.13),transparent_56%)]" />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent,rgba(45,212,191,0.08),transparent)]" />
           <div className="absolute left-[10%] top-[15%] h-3 w-3 rounded-full bg-primary shadow-[0_0_28px_hsl(var(--primary))]" />
           <div className="absolute left-[36%] top-[32%] h-4 w-4 rounded-full border border-primary bg-primary/30 shadow-[0_0_28px_hsl(var(--primary)/0.7)]" />
