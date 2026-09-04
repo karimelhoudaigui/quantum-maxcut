@@ -48,6 +48,9 @@ f(\mathbf r) = \sqrt{\frac{\sum_{(i,j)} \left(J_{ij}(\mathbf r) - w_{ij}\right)^
 ├── quantum_io.py                      # JSON/CSV serialization and result I/O helpers
 ├── quantum_config.py                  # Global numerical constants and defaults
 ├── graph_structure_study.py           # Graph-structure analysis and classification
+├── api/                               # FastAPI API for graph generation and pipeline jobs
+├── app/                               # React 18 + TypeScript + Vite production console
+├── docker-compose.yml                 # Starts API and frontend together
 ├── requirements.txt                   # Python dependency manifest
 ├── .github/workflows/python-app.yml   # GitHub Actions CI workflow
 │
@@ -111,6 +114,55 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
+
+## Modern Web Application
+
+The SaaS-ready console is split into a FastAPI backend and a React/Vite frontend.
+
+Backend:
+
+```bash
+source .venv/bin/activate
+uvicorn api.main:app --reload --port 8000
+```
+
+Frontend:
+
+```bash
+cd app
+npm install
+npm run dev
+```
+
+Then open:
+
+```text
+http://127.0.0.1:5173
+```
+
+The Phase 1 surface includes graph generation, optimized atom coordinates when available, asynchronous pipeline jobs, and live polling for the four production steps: geometry embedding, Pulser, SDP, and rounding.
+
+To launch both services together:
+
+```bash
+docker compose up
+```
+
+Production frontend:
+
+```text
+https://karimelhoudaigui.github.io/quantum-maxcut/
+```
+
+The GitHub Pages workflow builds the React app from `app/`. Set the repository variable
+`VITE_API_BASE_URL` if the production frontend should call a hosted FastAPI backend.
+
+API endpoints:
+
+- `POST /api/graph/generate`: generate path, cycle, star, complete, or random weighted graphs.
+- `POST /api/pipeline/run`: start the full Pulser to SDP to rounding pipeline.
+- `GET /api/pipeline/{job_id}/status`: poll status and partial step metrics.
+- `GET /api/results/{family}`: read existing family-level CSV summaries.
 
 ### Optional legacy setup
 

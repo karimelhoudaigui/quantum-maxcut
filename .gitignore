@@ -10,8 +10,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -32,6 +32,10 @@ ENV/
 *.swo
 *~
 
+# Node / frontend
+node_modules/
+*.tsbuildinfo
+
 # OS
 .DS_Store
 .DS_Store?
@@ -43,6 +47,9 @@ Thumbs.db
 
 # Project specific
 *.json
+!app/package.json
+!app/package-lock.json
+!app/tsconfig.json
 *.csv
 *.png
 *.pkl

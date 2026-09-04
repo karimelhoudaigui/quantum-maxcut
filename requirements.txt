@@ -5,3 +5,9 @@ qutip
 pulser
 pulser-simulation
 cvxpy
+fastapi
+uvicorn[standard]
+pydantic>=2
+streamlit>=1.28.0
+streamlit-option-menu>=0.3.2
+pandas>=1.5.0
