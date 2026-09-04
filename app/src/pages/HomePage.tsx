@@ -8,6 +8,7 @@ import {
   Network,
   Sparkles,
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import type { SimulationModule } from "../config/simulations";
 import { futureSimulationModules, simulationModules } from "../config/simulations";
@@ -20,12 +21,14 @@ interface HomePageProps {
 }
 
 export function HomePage({ onNavigate }: HomePageProps) {
+  const showHeroVideo = useHeroVideoEnabled();
+
   return (
-    <main className="min-h-screen max-w-[100vw] overflow-x-hidden bg-platform text-foreground">
-      <section className="relative min-h-screen max-w-full overflow-hidden px-5 py-6 sm:px-8 lg:px-10">
+    <main className="min-h-[100svh] overflow-x-clip bg-platform text-foreground">
+      <section className="relative overflow-x-clip px-5 py-6 sm:px-8 lg:px-10">
         <QuantumBackdrop />
 
-        <div className="relative z-10 mx-auto flex min-h-[calc(100vh-3rem)] w-full min-w-0 max-w-7xl flex-col">
+        <div className="relative z-10 mx-auto w-full min-w-0 max-w-7xl">
           <header className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-md border border-primary/35 bg-primary/[0.12] text-primary shadow-[0_0_28px_hsl(var(--primary)/0.18)]">
@@ -42,7 +45,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
             </div>
           </header>
 
-          <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)] items-center gap-12 py-14 lg:grid-cols-[minmax(0,1.02fr)_minmax(420px,0.98fr)] lg:py-12">
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] items-center gap-12 py-14 lg:min-h-[calc(100svh-8rem)] lg:grid-cols-[minmax(0,1.02fr)_minmax(420px,0.98fr)] lg:py-12">
             <div className="platform-hero-copy min-w-0">
               <div className="mb-5 inline-flex max-w-full items-center gap-2 rounded-md border border-primary/25 bg-primary/10 px-3 py-2 text-xs text-primary sm:text-sm">
                 <Sparkles size={16} className="shrink-0" />
@@ -68,11 +71,11 @@ export function HomePage({ onNavigate }: HomePageProps) {
             </div>
 
             <div className="platform-hero-visual relative min-h-[420px] min-w-0 lg:min-h-[520px]">
-              <HeroInstrument />
+              <HeroInstrument showVideo={showHeroVideo} />
             </div>
           </div>
 
-          <section className="pb-4">
+          <section className="pb-12">
             <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
               <div>
                 <p className="text-sm font-medium uppercase text-primary/75">Choose a simulation</p>
@@ -105,6 +108,21 @@ export function HomePage({ onNavigate }: HomePageProps) {
       </section>
     </main>
   );
+}
+
+function useHeroVideoEnabled() {
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 1024px) and (prefers-reduced-motion: no-preference)");
+    const update = () => setEnabled(mediaQuery.matches);
+
+    update();
+    mediaQuery.addEventListener("change", update);
+    return () => mediaQuery.removeEventListener("change", update);
+  }, []);
+
+  return enabled;
 }
 
 function SimulationCard({ module, onNavigate }: { module: SimulationModule; onNavigate: (route: string) => void }) {
@@ -216,7 +234,37 @@ function QuantumBackdrop() {
   );
 }
 
-function HeroInstrument() {
+function HeroInstrument({ showVideo }: { showVideo: boolean }) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    if (!showVideo) {
+      return;
+    }
+
+    let resumeTimer = 0;
+    const pauseDuringScroll = () => {
+      const video = videoRef.current;
+      if (!video) {
+        return;
+      }
+
+      video.pause();
+      window.clearTimeout(resumeTimer);
+      resumeTimer = window.setTimeout(() => {
+        if (video.isConnected) {
+          void video.play().catch(() => undefined);
+        }
+      }, 220);
+    };
+
+    window.addEventListener("scroll", pauseDuringScroll, { passive: true });
+    return () => {
+      window.clearTimeout(resumeTimer);
+      window.removeEventListener("scroll", pauseDuringScroll);
+    };
+  }, [showVideo]);
+
   return (
     <div className="absolute inset-0">
       <div className="absolute inset-0 rounded-[32px] border border-white/10 bg-[linear-gradient(155deg,rgba(255,255,255,0.09),rgba(255,255,255,0.015))] shadow-[0_32px_120px_rgba(0,0,0,0.42)]" />
@@ -229,21 +277,24 @@ function HeroInstrument() {
       </div>
       <div className="absolute inset-x-8 bottom-8 top-24">
         <div className="relative h-full overflow-hidden rounded-2xl border border-white/10 bg-black/20">
-          <video
-            aria-hidden="true"
-            autoPlay
-            className="simulation-stack-video absolute inset-0 h-full w-full object-cover opacity-45"
-            loop
-            muted
-            onLoadedMetadata={(event) => {
-              event.currentTarget.playbackRate = 0.72;
-            }}
-            playsInline
-            preload="auto"
-          >
-            <source src={simulationStackVideoMp4Src} type="video/mp4" />
-            <source src={simulationStackVideoMovSrc} type="video/quicktime" />
-          </video>
+          {showVideo ? (
+            <video
+              ref={videoRef}
+              aria-hidden="true"
+              autoPlay
+              className="simulation-stack-video absolute inset-0 h-full w-full object-cover opacity-45"
+              loop
+              muted
+              onLoadedMetadata={(event) => {
+                event.currentTarget.playbackRate = 0.72;
+              }}
+              playsInline
+              preload="metadata"
+            >
+              <source src={simulationStackVideoMp4Src} type="video/mp4" />
+              <source src={simulationStackVideoMovSrc} type="video/quicktime" />
+            </video>
+          ) : null}
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,7,13,0.1),rgba(5,7,13,0.62)),radial-gradient(circle_at_50%_45%,rgba(45,212,191,0.13),transparent_56%)]" />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent,rgba(45,212,191,0.08),transparent)]" />
           <div className="absolute left-[10%] top-[15%] h-3 w-3 rounded-full bg-primary shadow-[0_0_28px_hsl(var(--primary))]" />

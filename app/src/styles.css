@@ -67,21 +67,15 @@ input {
 
 .platform-hero-copy,
 .platform-hero-visual {
-  width: min(100%, calc(100vw - 2.5rem));
-  max-width: calc(100vw - 2.5rem);
+  width: 100%;
+  max-width: 100%;
 }
 
 .platform-hero-copy {
-  max-width: min(48rem, calc(100vw - 2.5rem));
+  max-width: 48rem;
 }
 
 @media (max-width: 639px) {
-  .platform-hero-copy,
-  .platform-hero-visual {
-    width: min(100%, calc(100vw - 4.5rem));
-    max-width: calc(100vw - 4.5rem);
-  }
-
   .platform-hero-copy {
     overflow-wrap: break-word;
   }
