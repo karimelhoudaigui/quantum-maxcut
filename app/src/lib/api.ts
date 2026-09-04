@@ -12,8 +12,8 @@ import {
   runLocalPipeline,
 } from "./localSimulator";
 
-const API_BASE = import.meta.env.DEV ? "" : (import.meta.env.VITE_API_BASE_URL ?? "").trim();
-const HAS_REMOTE_API = API_BASE.length > 0 || import.meta.env.DEV;
+const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").trim().replace(/\/$/, "");
+const HAS_REMOTE_API = API_BASE.length > 0;
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
