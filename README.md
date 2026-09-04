@@ -154,8 +154,10 @@ Production frontend:
 https://karimelhoudaigui.github.io/quantum-maxcut/
 ```
 
-The GitHub Pages workflow builds the React app from `app/`. Set the repository variable
-`VITE_API_BASE_URL` if the production frontend should call a hosted FastAPI backend.
+The GitHub Pages workflow builds the React app from `app/`. In production, the platform
+includes a browser-side simulation engine so graph generation and MaxCut runs work without
+a hosted backend. Set the repository variable `VITE_API_BASE_URL` if the production frontend
+should call a hosted FastAPI backend instead.
 
 API endpoints:
 
