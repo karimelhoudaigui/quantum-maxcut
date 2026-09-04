@@ -13,6 +13,11 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const appRoot = basePath ? `${basePath}/` : "/";
 
 function routeFromLocation(pathname: string) {
+  const simulationRoute = new URLSearchParams(window.location.search).get("simulation");
+  if (simulationRoute === "maxcut") {
+    return maxCutRoute;
+  }
+
   const hashRoute = window.location.hash.replace(/^#/, "");
   if (hashRoute.startsWith("/")) {
     return hashRoute;
@@ -43,9 +48,10 @@ export default function App() {
   }, []);
 
   const navigate = (nextRoute: string) => {
-    const nextPath = nextRoute === "/" ? appRoot : `${appRoot}#${nextRoute}`;
+    const nextPath = nextRoute === maxCutRoute ? `${appRoot}?simulation=maxcut` : appRoot;
     window.history.pushState({}, "", nextPath);
     setRoute(nextRoute);
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   };
 
   if (route !== maxCutRoute) {

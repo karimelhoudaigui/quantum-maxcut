@@ -116,7 +116,7 @@ function SimulationCard({ module, onNavigate }: { module: SimulationModule; onNa
       className={[
         "group relative min-h-[320px] overflow-hidden rounded-lg border p-5 transition duration-300",
         isAvailable
-          ? "cursor-pointer border-primary/25 bg-card-premium shadow-[0_24px_90px_rgba(0,0,0,0.28)] hover:-translate-y-1 hover:border-primary/50 hover:shadow-[0_28px_110px_hsl(var(--primary)/0.16)]"
+          ? "cursor-pointer border-primary/25 bg-card-premium shadow-[0_24px_90px_rgba(0,0,0,0.28)] hover:border-primary/50 hover:shadow-[0_28px_110px_hsl(var(--primary)/0.16)]"
           : "border-white/10 bg-white/[0.035] opacity-[0.68]",
       ].join(" ")}
       onClick={() => {
