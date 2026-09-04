@@ -116,7 +116,7 @@ function SimulationCard({ module, onNavigate }: { module: SimulationModule; onNa
       className={[
         "group relative min-h-[320px] overflow-hidden rounded-lg border p-5 transition duration-300",
         isAvailable
-          ? "cursor-pointer border-primary/25 bg-card-premium shadow-[0_24px_90px_rgba(0,0,0,0.28)] hover:border-primary/50 hover:shadow-[0_28px_110px_hsl(var(--primary)/0.16)]"
+          ? "cursor-pointer border-primary/25 bg-card-premium shadow-[0_24px_90px_rgba(0,0,0,0.28)] hover:border-primary/45"
           : "border-white/10 bg-white/[0.035] opacity-[0.68]",
       ].join(" ")}
       onClick={() => {
@@ -125,7 +125,7 @@ function SimulationCard({ module, onNavigate }: { module: SimulationModule; onNa
         }
       }}
     >
-      <div className="absolute inset-0 opacity-0 transition duration-300 group-hover:opacity-100">
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100">
         <div className="absolute right-0 top-0 h-40 w-40 bg-primary/10 blur-3xl" />
       </div>
 
@@ -219,7 +219,7 @@ function QuantumBackdrop() {
 function HeroInstrument() {
   return (
     <div className="absolute inset-0">
-      <div className="absolute inset-0 rounded-[32px] border border-white/10 bg-[linear-gradient(155deg,rgba(255,255,255,0.09),rgba(255,255,255,0.015))] shadow-[0_32px_120px_rgba(0,0,0,0.42)] backdrop-blur-md" />
+      <div className="absolute inset-0 rounded-[32px] border border-white/10 bg-[linear-gradient(155deg,rgba(255,255,255,0.09),rgba(255,255,255,0.015))] shadow-[0_32px_120px_rgba(0,0,0,0.42)]" />
       <div className="absolute left-6 right-6 top-6 flex items-center justify-between rounded-md border border-white/10 bg-black/20 px-4 py-3">
         <div>
           <p className="text-xs uppercase text-foreground/40">Simulation stack</p>
@@ -232,11 +232,14 @@ function HeroInstrument() {
           <video
             aria-hidden="true"
             autoPlay
-            className="absolute inset-0 h-full w-full object-cover opacity-75"
+            className="simulation-stack-video absolute inset-0 h-full w-full object-cover opacity-45"
             loop
             muted
+            onLoadedMetadata={(event) => {
+              event.currentTarget.playbackRate = 0.72;
+            }}
             playsInline
-            preload="metadata"
+            preload="auto"
           >
             <source src={simulationStackVideoMp4Src} type="video/mp4" />
             <source src={simulationStackVideoMovSrc} type="video/quicktime" />

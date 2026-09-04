@@ -57,6 +57,14 @@ input {
   backdrop-filter: blur(18px);
 }
 
+.simulation-stack-video {
+  backface-visibility: hidden;
+  contain: strict;
+  pointer-events: none;
+  transform: translate3d(0, 0, 0);
+  will-change: opacity;
+}
+
 .platform-hero-copy,
 .platform-hero-visual {
   width: min(100%, calc(100vw - 2.5rem));
