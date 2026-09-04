@@ -10,8 +10,14 @@ import { HomePage } from "./pages/HomePage";
 
 const maxCutRoute = "/simulations/maxcut";
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+const appRoot = basePath ? `${basePath}/` : "/";
 
 function routeFromLocation(pathname: string) {
+  const hashRoute = window.location.hash.replace(/^#/, "");
+  if (hashRoute.startsWith("/")) {
+    return hashRoute;
+  }
+
   if (basePath && pathname.startsWith(basePath)) {
     return pathname.slice(basePath.length) || "/";
   }
@@ -29,11 +35,15 @@ export default function App() {
   useEffect(() => {
     const handlePopState = () => setRoute(routeFromLocation(window.location.pathname));
     window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
+    window.addEventListener("hashchange", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener("hashchange", handlePopState);
+    };
   }, []);
 
   const navigate = (nextRoute: string) => {
-    const nextPath = `${basePath}${nextRoute === "/" ? "/" : nextRoute}`;
+    const nextPath = nextRoute === "/" ? appRoot : `${appRoot}#${nextRoute}`;
     window.history.pushState({}, "", nextPath);
     setRoute(nextRoute);
   };
