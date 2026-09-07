@@ -59,10 +59,10 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="grid min-h-screen grid-cols-[320px_minmax(0,1fr)_380px]">
+    <div className="h-[100svh] overflow-hidden bg-background text-foreground">
+      <div className="grid h-full min-h-0 grid-cols-[320px_minmax(0,1fr)_380px]">
         <GraphConfigurator />
-        <main className="flex min-w-0 flex-col gap-5 p-5">
+        <main className="flex min-h-0 min-w-0 flex-col gap-5 overflow-y-auto overscroll-contain p-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button

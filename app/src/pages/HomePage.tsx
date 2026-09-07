@@ -15,6 +15,7 @@ import { futureSimulationModules, simulationModules } from "../config/simulation
 
 const simulationStackVideoMp4Src = `${import.meta.env.BASE_URL}media/simulation-stack-4k.mp4`;
 const simulationStackVideoMovSrc = `${import.meta.env.BASE_URL}media/simulation-stack-4k.mov`;
+const simulationStackPosterSrc = `${import.meta.env.BASE_URL}media/simulation-stack-poster.png`;
 
 interface HomePageProps {
   onNavigate: (route: string) => void;
@@ -235,38 +236,67 @@ function QuantumBackdrop() {
 }
 
 function HeroInstrument({ showVideo }: { showVideo: boolean }) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const visibleRef = useRef(false);
+  const [isVideoVisible, setIsVideoVisible] = useState(false);
 
   useEffect(() => {
     if (!showVideo) {
+      visibleRef.current = false;
+      setIsVideoVisible(false);
       return;
     }
 
-    let resumeTimer = 0;
-    const pauseDuringScroll = () => {
-      const video = videoRef.current;
-      if (!video) {
-        return;
-      }
+    const container = containerRef.current;
+    if (!container || !("IntersectionObserver" in window)) {
+      visibleRef.current = true;
+      setIsVideoVisible(true);
+      return;
+    }
 
-      video.pause();
-      window.clearTimeout(resumeTimer);
-      resumeTimer = window.setTimeout(() => {
-        if (video.isConnected) {
-          void video.play().catch(() => undefined);
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        let nextVisible = visibleRef.current;
+
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.78) {
+          nextVisible = true;
         }
-      }, 220);
-    };
+        if (!entry.isIntersecting || entry.intersectionRatio <= 0.6) {
+          nextVisible = false;
+        }
 
-    window.addEventListener("scroll", pauseDuringScroll, { passive: true });
-    return () => {
-      window.clearTimeout(resumeTimer);
-      window.removeEventListener("scroll", pauseDuringScroll);
-    };
+        if (nextVisible !== visibleRef.current) {
+          visibleRef.current = nextVisible;
+          setIsVideoVisible(nextVisible);
+        }
+      },
+      { threshold: [0, 0.6, 0.78, 1] },
+    );
+
+    observer.observe(container);
+    return () => observer.disconnect();
   }, [showVideo]);
 
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) {
+      return;
+    }
+
+    if (!isVideoVisible) {
+      video.pause();
+      return;
+    }
+
+    video.playbackRate = 0.72;
+    void video.play().catch(() => undefined);
+  }, [isVideoVisible]);
+
+  const shouldRenderVideo = showVideo && isVideoVisible;
+
   return (
-    <div className="absolute inset-0">
+    <div ref={containerRef} className="absolute inset-0">
       <div className="absolute inset-0 rounded-[32px] border border-white/10 bg-[linear-gradient(155deg,rgba(255,255,255,0.09),rgba(255,255,255,0.015))] shadow-[0_32px_120px_rgba(0,0,0,0.42)]" />
       <div className="absolute left-6 right-6 top-6 flex items-center justify-between rounded-md border border-white/10 bg-black/20 px-4 py-3">
         <div>
@@ -277,7 +307,15 @@ function HeroInstrument({ showVideo }: { showVideo: boolean }) {
       </div>
       <div className="absolute inset-x-8 bottom-8 top-24">
         <div className="relative h-full overflow-hidden rounded-2xl border border-white/10 bg-black/20">
-          {showVideo ? (
+          <img
+            aria-hidden="true"
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover opacity-45"
+            decoding="async"
+            fetchPriority="high"
+            src={simulationStackPosterSrc}
+          />
+          {shouldRenderVideo ? (
             <video
               ref={videoRef}
               aria-hidden="true"
@@ -289,6 +327,7 @@ function HeroInstrument({ showVideo }: { showVideo: boolean }) {
                 event.currentTarget.playbackRate = 0.72;
               }}
               playsInline
+              poster={simulationStackPosterSrc}
               preload="metadata"
             >
               <source src={simulationStackVideoMp4Src} type="video/mp4" />

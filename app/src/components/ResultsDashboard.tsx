@@ -30,7 +30,7 @@ export function ResultsDashboard() {
   const maxRatio = Math.max(...comparisonData.map((item) => item.ratio), 1);
 
   return (
-    <aside className="flex h-full flex-col gap-4 border-l border-border bg-muted/30 p-5">
+    <aside className="flex h-[100svh] min-h-0 flex-col gap-4 overflow-y-auto overscroll-contain border-l border-border bg-muted/30 p-5">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs font-medium uppercase text-foreground/50">Results</p>

@@ -15,7 +15,7 @@ export function GraphConfigurator() {
   const generation = useGraphGeneration();
 
   return (
-    <aside className="flex h-screen flex-col overflow-y-auto border-r border-border bg-muted/30 p-5">
+    <aside className="flex h-[100svh] min-h-0 flex-col overflow-y-auto overscroll-contain border-r border-border bg-muted/30 p-5">
       <div className="mb-6 flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-md border border-primary/40 bg-primary text-xs font-black tracking-tight text-background">
           QO
