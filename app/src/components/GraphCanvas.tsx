@@ -8,7 +8,6 @@ import type { Edge, GraphResponse, Position } from "../types";
 
 export function GraphCanvas() {
   const graph = usePipelineStore((state) => state.graph);
-  const job = usePipelineStore((state) => state.job);
   const mountRef = useRef<HTMLDivElement | null>(null);
   const [rendererError, setRendererError] = useState<string | null>(null);
 
@@ -38,8 +37,7 @@ export function GraphCanvas() {
     mount.appendChild(renderer.domElement);
 
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.08;
+    controls.enableDamping = false;
     controls.enablePan = true;
     controls.minDistance = 2.8;
     controls.maxDistance = 28;
@@ -73,45 +71,33 @@ export function GraphCanvas() {
     scene.add(halo);
 
     if (graph) {
-      buildGraphScene(graphGroup, graph, job?.status === "running" || job?.status === "queued");
+      buildGraphScene(graphGroup, graph);
       frameCamera(camera, controls, graph);
     } else {
       buildEmptyScene(graphGroup);
     }
+
+    const render = () => {
+      renderer.render(scene, camera);
+    };
 
     const resize = () => {
       const { width, height } = mount.getBoundingClientRect();
       renderer.setSize(width, height, false);
       camera.aspect = width / Math.max(height, 1);
       camera.updateProjectionMatrix();
+      render();
     };
 
     const observer = new ResizeObserver(resize);
     observer.observe(mount);
     resize();
-
-    let animationFrame = 0;
-    const clock = new THREE.Clock();
-
-    const animate = () => {
-      const elapsed = clock.getElapsedTime();
-      graphGroup.rotation.z = Math.sin(elapsed * 0.22) * 0.025;
-
-      for (const child of graphGroup.children) {
-        if (child.userData.kind === "node") {
-          child.scale.setScalar(1 + Math.sin(elapsed * 2.4 + child.userData.phase) * 0.035);
-        }
-      }
-
-      controls.update();
-      renderer.render(scene, camera);
-      animationFrame = window.requestAnimationFrame(animate);
-    };
-    animate();
+    controls.addEventListener("change", render);
+    render();
 
     return () => {
-      window.cancelAnimationFrame(animationFrame);
       observer.disconnect();
+      controls.removeEventListener("change", render);
       controls.dispose();
       mount.removeChild(renderer.domElement);
       scene.traverse((object) => {
@@ -125,7 +111,7 @@ export function GraphCanvas() {
       });
       renderer.dispose();
     };
-  }, [graph, job?.status]);
+  }, [graph]);
 
   return (
     <section className="relative min-h-[620px] overflow-hidden rounded-md border border-border bg-background shadow-panel">
@@ -154,7 +140,7 @@ export function GraphCanvas() {
   );
 }
 
-function buildGraphScene(group: THREE.Group, graph: GraphResponse, isRunning: boolean) {
+function buildGraphScene(group: THREE.Group, graph: GraphResponse) {
   const positions = normalizedPositions(graph);
   const degree = degreeMap(graph.edges);
 
@@ -172,7 +158,7 @@ function buildGraphScene(group: THREE.Group, graph: GraphResponse, isRunning: bo
     if (!point) {
       continue;
     }
-    const node = createNode(point, isRunning, position.id);
+    const node = createNode(point, position.id);
     node.userData.kind = "node";
     node.userData.phase = position.id * 0.8;
     group.add(node);
@@ -235,12 +221,12 @@ function degreeMap(edges: Edge[]) {
   return degree;
 }
 
-function createNode(position: THREE.Vector3, isRunning: boolean, id: number) {
+function createNode(position: THREE.Vector3, id: number) {
   const geometry = new THREE.SphereGeometry(0.22, 40, 40);
   const material = new THREE.MeshStandardMaterial({
     color: 0x78e4ca,
-    emissive: isRunning ? 0x286e61 : 0x143a34,
-    emissiveIntensity: isRunning ? 0.65 : 0.35,
+    emissive: 0x143a34,
+    emissiveIntensity: 0.35,
     roughness: 0.22,
     metalness: 0.18,
   });
@@ -254,7 +240,7 @@ function createNode(position: THREE.Vector3, isRunning: boolean, id: number) {
     new THREE.MeshBasicMaterial({
       color: 0x77f7da,
       transparent: true,
-      opacity: isRunning ? 0.18 : 0.1,
+      opacity: 0.1,
       depthWrite: false,
     }),
   );

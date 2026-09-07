@@ -1,5 +1,5 @@
 import { Download } from "lucide-react";
-import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { useMemo } from "react";
 
 import { usePipelineStore } from "../stores/pipelineStore";
 
@@ -14,12 +14,20 @@ export function ResultsDashboard() {
   const job = usePipelineStore((state) => state.job);
   const result = job?.result;
 
-  const chartData = result
-    ? [
-        { name: "Pulser", ratio: Number(result.ratio_pulser ?? 0) },
-        { name: "Hybrid", ratio: Number(result.ratio_hybrid ?? 0) },
-      ]
-    : [];
+  const comparisonData = useMemo(
+    () =>
+      result
+        ? [
+            { name: "Pulser", ratio: Number(result.ratio_pulser ?? 0) },
+            { name: "Hybrid", ratio: Number(result.ratio_hybrid ?? 0) },
+          ]
+        : [
+            { name: "Pulser", ratio: 0 },
+            { name: "Hybrid", ratio: 0 },
+          ],
+    [result],
+  );
+  const maxRatio = Math.max(...comparisonData.map((item) => item.ratio), 1);
 
   return (
     <aside className="flex h-full flex-col gap-4 border-l border-border bg-muted/30 p-5">
@@ -47,14 +55,22 @@ export function ResultsDashboard() {
 
       <div className="min-h-64 rounded-md border border-border bg-background/70 p-4">
         <p className="mb-4 text-sm font-semibold">Pulser vs Hybrid</p>
-        <ResponsiveContainer width="100%" height={210}>
-          <BarChart data={chartData}>
-            <XAxis dataKey="name" stroke="currentColor" fontSize={12} />
-            <YAxis stroke="currentColor" fontSize={12} />
-            <Tooltip cursor={{ fill: "rgba(255,255,255,0.06)" }} />
-            <Bar dataKey="ratio" fill="#43d9b8" radius={[5, 5, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
+        <div className="grid h-[210px] grid-cols-2 items-end gap-4 border-b border-l border-border/70 px-4 pb-6 pt-4">
+          {comparisonData.map((item) => (
+            <div key={item.name} className="flex h-full min-w-0 flex-col items-center justify-end gap-3">
+              <div className="flex h-full w-full items-end justify-center">
+                <div
+                  className="w-full max-w-[5rem] rounded-t-md bg-primary"
+                  style={{ height: `${Math.max(4, (item.ratio / maxRatio) * 100)}%` }}
+                />
+              </div>
+              <div className="text-center">
+                <p className="text-xs font-medium text-foreground/60">{item.name}</p>
+                <p className="mt-1 font-mono text-xs text-primary">{result ? item.ratio.toFixed(5) : "—"}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </aside>
   );
