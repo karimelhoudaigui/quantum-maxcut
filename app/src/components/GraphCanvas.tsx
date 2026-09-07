@@ -34,6 +34,9 @@ export function GraphCanvas() {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.domElement.style.display = "block";
+    renderer.domElement.style.height = "100%";
+    renderer.domElement.style.width = "100%";
     mount.appendChild(renderer.domElement);
 
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -72,10 +75,10 @@ export function GraphCanvas() {
 
     if (graph) {
       buildGraphScene(graphGroup, graph);
-      frameCamera(camera, controls, graph);
     } else {
       buildEmptyScene(graphGroup);
     }
+    const graphBounds = new THREE.Box3().setFromObject(graphGroup);
 
     const render = () => {
       renderer.render(scene, camera);
@@ -83,9 +86,13 @@ export function GraphCanvas() {
 
     const resize = () => {
       const { width, height } = mount.getBoundingClientRect();
-      renderer.setSize(width, height, false);
-      camera.aspect = width / Math.max(height, 1);
+      const canvasWidth = Math.max(1, Math.floor(width));
+      const canvasHeight = Math.max(1, Math.floor(height));
+
+      renderer.setSize(canvasWidth, canvasHeight);
+      camera.aspect = canvasWidth / canvasHeight;
       camera.updateProjectionMatrix();
+      frameCamera(camera, controls, graphBounds);
       render();
     };
 
@@ -114,7 +121,7 @@ export function GraphCanvas() {
   }, [graph]);
 
   return (
-    <section className="relative min-h-[620px] overflow-hidden rounded-md border border-border bg-background shadow-panel">
+    <section className="relative h-[620px] min-h-[620px] overflow-hidden rounded-md border border-border bg-background shadow-panel">
       <div className="absolute left-5 top-5 z-10">
         <p className="text-xs font-medium uppercase text-foreground/50">3D graph canvas</p>
         <h2 className="text-2xl font-semibold">{graph ? `${graph.family} / ${graph.n_nodes} nodes` : "Generate a graph"}</h2>
@@ -127,7 +134,7 @@ export function GraphCanvas() {
         <ControlBadge icon={<Maximize2 size={14} />} label="Orbit" />
       </div>
 
-      <div ref={mountRef} className="h-full min-h-[620px] w-full" />
+      <div ref={mountRef} className="h-full w-full" />
       {rendererError ? (
         <div className="absolute inset-0 flex items-center justify-center bg-background/90 p-8 text-center">
           <div className="max-w-sm rounded-md border border-border bg-muted/45 p-5">
@@ -295,11 +302,23 @@ function createLabel(text: string) {
   return sprite;
 }
 
-function frameCamera(camera: THREE.PerspectiveCamera, controls: OrbitControls, graph: GraphResponse) {
-  const count = Math.max(graph.positions.length, 2);
-  const distance = Math.min(20, Math.max(8.5, count * 1.15));
-  camera.position.set(0, -distance, distance * 0.78);
-  controls.target.set(0, 0, 0);
+function frameCamera(camera: THREE.PerspectiveCamera, controls: OrbitControls, bounds: THREE.Box3) {
+  const center = bounds.getCenter(new THREE.Vector3());
+  const sphere = bounds.getBoundingSphere(new THREE.Sphere());
+  const target = Number.isFinite(center.x) ? center : new THREE.Vector3(0, 0, 0);
+  const radius = Math.max(Number.isFinite(sphere.radius) ? sphere.radius : 0, 2.4);
+  const verticalFov = THREE.MathUtils.degToRad(camera.fov);
+  const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * Math.max(camera.aspect, 0.1));
+  const distance = Math.min(
+    30,
+    Math.max(7.5, Math.max(radius / Math.sin(verticalFov / 2), radius / Math.sin(horizontalFov / 2)) * 1.18),
+  );
+  const viewDirection = new THREE.Vector3(0, -1, 0.82).normalize();
+
+  camera.position.copy(target).add(viewDirection.multiplyScalar(distance));
+  camera.near = Math.max(0.1, distance / 100);
+  camera.far = Math.max(1000, distance * 8);
+  controls.target.copy(target);
   controls.update();
 }
 
