@@ -7,10 +7,16 @@ import { GraphConfigurator } from "./components/GraphConfigurator";
 import { PipelineRunner } from "./components/PipelineRunner";
 import { ResultsDashboard } from "./components/ResultsDashboard";
 import { HomePage } from "./pages/HomePage";
+import { QuantinaPage } from "./pages/QuantinaPage";
 
 const maxCutRoute = "/simulations/maxcut";
+const quantinaRoute = "/quantina";
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const appRoot = basePath ? `${basePath}/` : "/";
+
+function normalizeRoute(route: string) {
+  return route.length > 1 ? route.replace(/\/$/, "") : route;
+}
 
 function routeFromLocation(pathname: string) {
   const simulationRoute = new URLSearchParams(window.location.search).get("simulation");
@@ -20,13 +26,13 @@ function routeFromLocation(pathname: string) {
 
   const hashRoute = window.location.hash.replace(/^#/, "");
   if (hashRoute.startsWith("/")) {
-    return hashRoute;
+    return normalizeRoute(hashRoute);
   }
 
   if (basePath && pathname.startsWith(basePath)) {
-    return pathname.slice(basePath.length) || "/";
+    return normalizeRoute(pathname.slice(basePath.length) || "/");
   }
-  return pathname;
+  return normalizeRoute(pathname);
 }
 
 export default function App() {
@@ -36,6 +42,15 @@ export default function App() {
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
   }, [darkMode]);
+
+  useEffect(() => {
+    document.title =
+      route === quantinaRoute
+        ? "QuantINA - Quantum Industrial Networks in Nouvelle-Aquitaine"
+        : route === maxCutRoute
+          ? "Neutral-atom MaxCut Lab"
+          : "Quantum Simulation Platform";
+  }, [route]);
 
   useEffect(() => {
     const handlePopState = () => setRoute(routeFromLocation(window.location.pathname));
@@ -48,11 +63,16 @@ export default function App() {
   }, []);
 
   const navigate = (nextRoute: string) => {
-    const nextPath = nextRoute === maxCutRoute ? `${appRoot}?simulation=maxcut` : appRoot;
+    const nextPath =
+      nextRoute === maxCutRoute ? `${appRoot}?simulation=maxcut` : nextRoute === quantinaRoute ? `${appRoot}quantina` : appRoot;
     window.history.pushState({}, "", nextPath);
     setRoute(nextRoute);
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   };
+
+  if (route === quantinaRoute) {
+    return <QuantinaPage onNavigate={navigate} />;
+  }
 
   if (route !== maxCutRoute) {
     return <HomePage onNavigate={navigate} />;

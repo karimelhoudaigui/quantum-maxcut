@@ -30,19 +30,28 @@ export function HomePage({ onNavigate }: HomePageProps) {
         <QuantumBackdrop />
 
         <div className="relative z-10 mx-auto w-full min-w-0 max-w-7xl">
-          <header className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-md border border-primary/35 bg-primary/[0.12] text-primary shadow-[0_0_28px_hsl(var(--primary)/0.18)]">
+          <header className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-primary/35 bg-primary/[0.12] text-primary shadow-[0_0_28px_hsl(var(--primary)/0.18)]">
                 <CircuitBoard size={21} />
               </div>
-              <div>
-                <p className="text-sm font-semibold">Quantum Simulation Platform</p>
-                <p className="text-xs text-foreground/50">Scientific computing workspace · Created by HYBQUANT</p>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold">Quantum Simulation Platform</p>
+                <p className="hidden truncate text-xs text-foreground/50 sm:block">Scientific computing workspace · Created by HYBQUANT</p>
               </div>
             </div>
-            <div className="hidden items-center gap-2 rounded-md border border-white/10 bg-white/[0.045] px-3 py-2 text-xs text-foreground/60 backdrop-blur md:flex">
-              <span className="h-2 w-2 rounded-full bg-primary shadow-[0_0_18px_hsl(var(--primary))]" />
-              Research environment
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={() => onNavigate("/quantina")}
+                className="rounded-md border border-primary/25 bg-primary/10 px-2.5 py-2 text-xs font-semibold text-primary transition hover:border-primary/45 sm:px-3"
+              >
+                QuantINA
+              </button>
+              <div className="hidden items-center gap-2 rounded-md border border-white/10 bg-white/[0.045] px-3 py-2 text-xs text-foreground/60 backdrop-blur md:flex">
+                <span className="h-2 w-2 rounded-full bg-primary shadow-[0_0_18px_hsl(var(--primary))]" />
+                Research environment
+              </div>
             </div>
           </header>
 
