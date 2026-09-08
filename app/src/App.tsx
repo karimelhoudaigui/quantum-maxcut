@@ -19,9 +19,15 @@ function normalizeRoute(route: string) {
 }
 
 function routeFromLocation(pathname: string) {
-  const simulationRoute = new URLSearchParams(window.location.search).get("simulation");
+  const searchParams = new URLSearchParams(window.location.search);
+  const simulationRoute = searchParams.get("simulation");
   if (simulationRoute === "maxcut") {
     return maxCutRoute;
+  }
+
+  const pageRoute = searchParams.get("page");
+  if (pageRoute === "quantina") {
+    return quantinaRoute;
   }
 
   const hashRoute = window.location.hash.replace(/^#/, "");
@@ -64,7 +70,7 @@ export default function App() {
 
   const navigate = (nextRoute: string) => {
     const nextPath =
-      nextRoute === maxCutRoute ? `${appRoot}?simulation=maxcut` : nextRoute === quantinaRoute ? `${appRoot}quantina` : appRoot;
+      nextRoute === maxCutRoute ? `${appRoot}?simulation=maxcut` : nextRoute === quantinaRoute ? `${appRoot}?page=quantina` : appRoot;
     window.history.pushState({}, "", nextPath);
     setRoute(nextRoute);
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
