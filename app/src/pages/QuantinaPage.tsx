@@ -4,7 +4,6 @@ import {
   BatteryCharging,
   BookOpen,
   BrainCircuit,
-  Briefcase,
   Building2,
   CircuitBoard,
   Code2,
@@ -16,6 +15,7 @@ import {
   GraduationCap,
   Handshake,
   HelpCircle,
+  Mail,
   Microscope,
   Network,
   Plane,
@@ -59,6 +59,14 @@ interface PlatformModule {
   description: string;
   tags: string[];
   route?: string;
+}
+
+interface TeamMember {
+  name: string;
+  role: string;
+  affiliation: string;
+  email: string;
+  photo: string;
 }
 
 const useCases: UseCase[] = [
@@ -218,21 +226,34 @@ const deliverables: ProgramItem[] = [
   },
 ];
 
-const joinTracks: ProgramItem[] = [
+const teamMembers: TeamMember[] = [
   {
-    title: "I am a company",
-    text: "Bring a concrete industrial problem, data constraints and operational criteria for a rigorous feasibility track.",
-    icon: Briefcase,
+    name: "Yassine Hamoudi",
+    role: "HYBQUANT Project Coordinator",
+    affiliation: "LaBRI",
+    email: "yassine.hamoudi@labri.fr",
+    photo: `${import.meta.env.BASE_URL}media/team/yassine-hamoudi.jpg`,
   },
   {
-    title: "I am a researcher",
-    text: "Contribute methods, models, benchmarks and domain expertise to applied quantum and HPC studies.",
-    icon: Microscope,
+    name: "Adrian Tanasa",
+    role: "Deputy HYBQUANT Project Coordinator",
+    affiliation: "LaBRI",
+    email: "adrian.tanasa@labri.fr",
+    photo: `${import.meta.env.BASE_URL}media/team/adrian-tanasa.jpg`,
   },
   {
-    title: "I am a student or intern",
-    text: "Join a supervised applied research track that can lead to software, publications, CIFRE or long-term partnerships.",
-    icon: GraduationCap,
+    name: "Audrey Durand",
+    role: "Regional Initiative Coordinator - Naquidis",
+    affiliation: "Institut d'Optique",
+    email: "audrey.durand@institutoptique.fr",
+    photo: `${import.meta.env.BASE_URL}media/team/audrey-durand.jpg`,
+  },
+  {
+    name: "Karim El Houdaigui",
+    role: "HYBQUANT Research Engineer",
+    affiliation: "LaBRI",
+    email: "karim.el-houdaigui@labri.fr",
+    photo: `${import.meta.env.BASE_URL}media/team/karim-el-houdaigui.jpg`,
   },
 ];
 
@@ -872,16 +893,16 @@ function JoinSection() {
   return (
     <section id="join" className="px-5 py-20 sm:px-8 lg:px-10">
       <div className="mx-auto max-w-7xl">
-        <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
+        <div className="grid gap-8 lg:grid-cols-[0.72fr_1.28fr] lg:items-start">
           <SectionIntro
             eyebrow="Join QuantINA"
-            title="Bring a real problem, a method or the energy to build the first demonstrators."
-            text="QuantINA is an entry point for companies, researchers and students who want to evaluate quantum technologies with industrial seriousness and scientific humility."
+            title="Connect with the QuantINA coordination team."
+            text="Companies, researchers and students can enter the program through a coordinated HYBQUANT and regional initiative team."
           />
 
-          <div className="grid gap-4 md:grid-cols-3">
-            {joinTracks.map((item) => (
-              <ProgramCard key={item.title} item={item} />
+          <div className="grid gap-4 md:grid-cols-2">
+            {teamMembers.map((member) => (
+              <TeamMemberCard key={member.email} member={member} />
             ))}
           </div>
         </div>
@@ -916,6 +937,37 @@ function ProgramCard({ item }: { item: ProgramItem }) {
       <Icon size={20} className="text-primary" />
       <h3 className="mt-5 text-lg font-semibold text-white">{item.title}</h3>
       <p className="mt-3 text-sm leading-6 text-foreground/58">{item.text}</p>
+    </article>
+  );
+}
+
+function TeamMemberCard({ member }: { member: TeamMember }) {
+  return (
+    <article className="group overflow-hidden rounded-md border border-white/10 bg-white/[0.04] transition hover:border-primary/35 hover:bg-white/[0.06]">
+      <div className="relative aspect-[1.18] overflow-hidden bg-black/25">
+        <img
+          alt={`${member.name} portrait`}
+          className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.035]"
+          decoding="async"
+          loading="lazy"
+          src={member.photo}
+        />
+        <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-[#05070d]/78 via-transparent to-transparent" />
+        <span className="absolute bottom-4 left-4 rounded-md border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary backdrop-blur-xl">
+          {member.affiliation}
+        </span>
+      </div>
+      <div className="p-5">
+        <p className="text-xs font-semibold uppercase tracking-wide text-primary/72">{member.role}</p>
+        <h3 className="mt-2 text-xl font-semibold text-white">{member.name}</h3>
+        <a
+          href={`mailto:${member.email}`}
+          className="mt-4 inline-flex max-w-full items-center gap-2 rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm font-medium text-foreground/62 transition hover:border-primary/35 hover:text-primary"
+        >
+          <Mail size={15} className="shrink-0" />
+          <span className="truncate">{member.email}</span>
+        </a>
+      </div>
     </article>
   );
 }
