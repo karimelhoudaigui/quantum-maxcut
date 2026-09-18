@@ -159,6 +159,20 @@ includes a browser-side simulation engine so graph generation and MaxCut runs wo
 a hosted backend. Set the repository variable `VITE_API_BASE_URL` if the production frontend
 should call a hosted FastAPI backend instead.
 
+The React console also includes a **Run HPC** action. It submits the current graph
+configuration to `hpc-bridge` and polls the returned job until completion. When the console
+is served by `hpc-bridge` itself on PLMShift, leave `VITE_HPC_BRIDGE_URL` unset so the browser
+uses the same origin (`/api/jobs`). For a separate frontend deployment, set it to the bridge
+origin, for example `https://hpc-bridge.apps.math.cnrs.fr`. The user token is requested by the
+browser and stored locally as `hpc_bridge_token`; the worker token is never included in this
+repository.
+
+For a PLMShift deployment, `app/Dockerfile` builds the console as a static Nginx
+image. The OpenShift manifests in the companion `hpc-bridge` repository deploy
+that image in the same project and expose `https://quantum-maxcut.apps.math.cnrs.fr/`;
+the `/api` path is routed to `hpc-bridge`, so the browser keeps using a same-origin
+API while the existing `hpc-bridge.apps...` route remains available.
+
 API endpoints:
 
 - `POST /api/graph/generate`: generate path, cycle, star, complete, or random weighted graphs.
