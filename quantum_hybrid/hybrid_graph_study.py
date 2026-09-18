@@ -168,6 +168,8 @@ def evaluate_fixed_hybrid_sequence_on_graph(
         "E_pulser_in_qmc": float(pulser_out["E_pulser_in_qmc"]),
         "E_product_best_in_qmc": float(hybrid_out["E_product_in_qmc"]),
         "E_hybrid_in_qmc": float(hybrid_out["E_hybrid_in_qmc"]),
+        "cut_assignment": [int(x) for x in hybrid_out["cut_assignment"]],
+        "cut_assignment_value": float(hybrid_out["cut_assignment_value"]),
     }
 
 
