@@ -20,6 +20,7 @@ export function usePipelineRunner() {
   const job = usePipelineStore((state) => state.job);
   const hpcJob = usePipelineStore((state) => state.hpcJob);
   const annealing = usePipelineStore((state) => state.annealing);
+  const enableAnimations = usePipelineStore((state) => state.enableAnimations);
   const setJob = usePipelineStore((state) => state.setJob);
   const setHpcJob = usePipelineStore((state) => state.setHpcJob);
 
@@ -41,7 +42,7 @@ export function usePipelineRunner() {
   });
 
   const hpcRun = useMutation({
-    mutationFn: () => runHpcPipeline(config, annealing),
+    mutationFn: () => runHpcPipeline(config, annealing, enableAnimations),
     onSuccess: setHpcJob,
   });
 

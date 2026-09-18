@@ -10,8 +10,10 @@ const families: GraphFamily[] = ["path", "cycle", "star", "complete", "random"];
 export function GraphConfigurator() {
   const config = usePipelineStore((state) => state.config);
   const annealing = usePipelineStore((state) => state.annealing);
+  const enableAnimations = usePipelineStore((state) => state.enableAnimations);
   const setConfig = usePipelineStore((state) => state.setConfig);
   const setAnnealing = usePipelineStore((state) => state.setAnnealing);
+  const setEnableAnimations = usePipelineStore((state) => state.setEnableAnimations);
   const generation = useGraphGeneration();
 
   return (
@@ -82,6 +84,19 @@ export function GraphConfigurator() {
             type="checkbox"
             checked={config.optimize_geometry}
             onChange={(event) => setConfig({ optimize_geometry: event.target.checked })}
+            className="h-4 w-4 accent-primary"
+          />
+        </label>
+
+        <label className="flex items-center justify-between rounded-md border border-border bg-background/70 px-3 py-3 text-sm">
+          <div>
+            <span>HPC animations</span>
+            <p className="text-xs text-foreground/50">Magnetization replay &amp; rounding search (HPC run only)</p>
+          </div>
+          <input
+            type="checkbox"
+            checked={enableAnimations}
+            onChange={(event) => setEnableAnimations(event.target.checked)}
             className="h-4 w-4 accent-primary"
           />
         </label>

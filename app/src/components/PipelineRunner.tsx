@@ -70,6 +70,16 @@ export function PipelineRunner() {
             </p>
           ) : null}
           {hpcJob?.error ? <p className="mt-2 text-red-200">{hpcJob.error}</p> : null}
+          {hpcJob?.progress?.phases.length ? (
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {hpcJob.progress.phases.map((phase) => (
+                <div key={phase.phase} className="rounded-md border border-border bg-background/60 p-2">
+                  <p className="text-[10px] font-medium uppercase text-foreground/45">{phase.phase}</p>
+                  <p className="font-mono text-xs text-primary">{phase.duration_seconds.toFixed(2)}s</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
           {hpcJob?.result ? <pre className="mt-2 max-h-40 overflow-auto text-xs text-foreground/65">{JSON.stringify(hpcJob.result, null, 2)}</pre> : null}
         </div>
       ) : null}
