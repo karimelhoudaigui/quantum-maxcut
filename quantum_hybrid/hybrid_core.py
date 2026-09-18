@@ -98,12 +98,15 @@ def run_hybrid_postprocessing(
     E_pulser_in_qmc,
     seed=1234,
     n_roundings=32,
+    enable_animations=False,
 ):
     """
     Pipeline complet :
     corrélations Pulser -> SDP -> plusieurs roundings -> meilleur état produit
     -> comparaison finale.
     """
+    import time
+
     from .hybrid_eval import (
         choose_best_hybrid_result,
         evaluate_multiple_product_states_in_qmc,
@@ -111,13 +114,16 @@ def run_hybrid_postprocessing(
     from .hybrid_rounding import random_hyperplane_rounding, round_sdp_to_product_state
     from .hybrid_sdp import solve_proxy_sdp_from_correlators
 
+    t_sdp_start = time.perf_counter()
     sdp_out = solve_proxy_sdp_from_correlators(
         n=n,
         corrs=corrs,
         target_edges=target_edges,
     )
+    sdp_duration_seconds = time.perf_counter() - t_sdp_start
     Delta = sdp_out["Delta"]
 
+    t_rounding_start = time.perf_counter()
     rounding_candidates = []
     for trial in range(int(n_roundings)):
         trial_seed = int(seed) + trial
@@ -132,7 +138,15 @@ def run_hybrid_postprocessing(
         target_edges=target_edges,
         candidates=rounding_candidates,
     )
+    rounding_duration_seconds = time.perf_counter() - t_rounding_start
     best_rounding = eval_summary["best"]
+
+    rounding_trials_series = None
+    if enable_animations:
+        rounding_trials_series = [
+            {"seed": int(row["seed"]), "ratio_product": float(row["ratio_product"])}
+            for row in eval_summary["all_results"]
+        ]
 
     hyperplane_out = random_hyperplane_rounding(
         vectors=best_rounding["x_vectors"],
@@ -163,6 +177,9 @@ def run_hybrid_postprocessing(
         "cut_assignment_value": hyperplane_out["best_value"],
         "n_roundings": int(n_roundings),
         "rounding_trials": eval_summary["all_results"],
+        "rounding_trials_series": rounding_trials_series,
+        "sdp_duration_seconds": sdp_duration_seconds,
+        "rounding_duration_seconds": rounding_duration_seconds,
         "E0_qmc": best_rounding["E0_qmc"],
         "E_product_in_qmc": best_rounding["E_product_in_qmc"],
         "ratio_product": best_rounding["ratio_product"],
@@ -181,6 +198,7 @@ def run_hybrid_on_pulser_output(
     corrs,
     seed=1234,
     n_roundings=32,
+    enable_animations=False,
 ):
     """
     Wrapper pratique quand evaluate_smooth_pulser_final_state a déjà tourné.
@@ -193,4 +211,5 @@ def run_hybrid_on_pulser_output(
         E_pulser_in_qmc=float(pulser_out["E_pulser_in_qmc"]),
         seed=seed,
         n_roundings=n_roundings,
+        enable_animations=enable_animations,
     )
