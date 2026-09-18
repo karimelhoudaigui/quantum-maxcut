@@ -70,6 +70,27 @@ export interface PipelineJob {
   error: string | null;
 }
 
+export type HpcJobStatus =
+  | "queued"
+  | "waiting_for_worker"
+  | "dispatched"
+  | "submitting"
+  | "running"
+  | "done"
+  | "error"
+  | "cancelled";
+
+export interface HpcJob {
+  job_id: string;
+  status: HpcJobStatus;
+  payload?: Record<string, unknown>;
+  slurm_job_id?: string;
+  result?: Record<string, unknown> | null;
+  error?: string | null;
+  created_at?: string;
+  finished_at?: string | null;
+}
+
 export interface FamilyResultRow {
   family: string;
   metrics: Record<string, number | string>;

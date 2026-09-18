@@ -1,16 +1,18 @@
 import { create } from "zustand";
 
-import type { AnnealingConfig, GraphGenerateRequest, GraphResponse, PipelineJob } from "../types";
+import type { AnnealingConfig, GraphGenerateRequest, GraphResponse, HpcJob, PipelineJob } from "../types";
 
 interface PipelineState {
   config: GraphGenerateRequest;
   annealing: AnnealingConfig;
   graph: GraphResponse | null;
   job: PipelineJob | null;
+  hpcJob: HpcJob | null;
   setConfig: (config: Partial<GraphGenerateRequest>) => void;
   setAnnealing: (annealing: Partial<AnnealingConfig>) => void;
   setGraph: (graph: GraphResponse) => void;
   setJob: (job: PipelineJob | null) => void;
+  setHpcJob: (job: HpcJob | null) => void;
 }
 
 export const usePipelineStore = create<PipelineState>((set) => ({
@@ -36,8 +38,10 @@ export const usePipelineStore = create<PipelineState>((set) => ({
   },
   graph: null,
   job: null,
+  hpcJob: null,
   setConfig: (config) => set((state) => ({ config: { ...state.config, ...config } })),
   setAnnealing: (annealing) => set((state) => ({ annealing: { ...state.annealing, ...annealing } })),
   setGraph: (graph) => set({ graph }),
   setJob: (job) => set({ job }),
+  setHpcJob: (hpcJob) => set({ hpcJob }),
 }));
