@@ -59,6 +59,7 @@ export interface PipelineStep {
   status: StepStatus;
   metric_label: string | null;
   metric_value: number | string | null;
+  duration_seconds?: number;
 }
 
 export interface PipelineJob {

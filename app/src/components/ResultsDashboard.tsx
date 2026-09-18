@@ -12,7 +12,8 @@ const metricKeys = [
 
 export function ResultsDashboard() {
   const job = usePipelineStore((state) => state.job);
-  const result = job?.result;
+  const hpcJob = usePipelineStore((state) => state.hpcJob);
+  const result = job?.result ?? hpcJob?.result;
 
   const comparisonData = useMemo(
     () =>
@@ -30,7 +31,7 @@ export function ResultsDashboard() {
   const maxRatio = Math.max(...comparisonData.map((item) => item.ratio), 1);
 
   return (
-    <aside className="flex h-[100svh] min-h-0 flex-col gap-4 overflow-y-auto overscroll-contain border-l border-border bg-muted/30 p-5">
+    <aside className="flex min-h-0 flex-col gap-4 overflow-y-auto overscroll-contain border-t border-border bg-muted/30 p-4 sm:p-5 lg:h-[100svh] lg:border-t-0 lg:border-l">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs font-medium uppercase text-foreground/50">Results</p>

@@ -1,15 +1,26 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 
-import { generateGraph, getHpcJob, getPipelineStatus, runHpcPipeline, runPipeline } from "../lib/api";
+import { cancelHpcJob, generateGraph, getHpcJob, getPipelineStatus, runHpcPipeline, runPipeline } from "../lib/api";
 import { usePipelineStore } from "../stores/pipelineStore";
+
+const HPC_ACTIVE_STATUSES = ["queued", "waiting_for_worker", "dispatched", "submitting", "running"];
 
 export function useGraphGeneration() {
   const config = usePipelineStore((state) => state.config);
+  const randomizeSeed = usePipelineStore((state) => state.randomizeSeed);
+  const setConfig = usePipelineStore((state) => state.setConfig);
   const setGraph = usePipelineStore((state) => state.setGraph);
 
   return useMutation({
-    mutationFn: () => generateGraph(config),
+    mutationFn: () => {
+      if (randomizeSeed) {
+        const seed = Math.floor(Math.random() * 1_000_000);
+        setConfig({ seed });
+        return generateGraph({ ...config, seed });
+      }
+      return generateGraph(config);
+    },
     onSuccess: setGraph,
   });
 }
@@ -42,7 +53,13 @@ export function usePipelineRunner() {
   });
 
   const hpcRun = useMutation({
-    mutationFn: () => runHpcPipeline(config, annealing, enableAnimations),
+    mutationFn: async () => {
+      if (hpcJob && HPC_ACTIVE_STATUSES.includes(hpcJob.status)) {
+        await cancelHpcJob(hpcJob.job_id).catch(() => undefined);
+      }
+      return runHpcPipeline(config, annealing, enableAnimations);
+    },
+    onMutate: () => setHpcJob(null),
     onSuccess: setHpcJob,
   });
 
