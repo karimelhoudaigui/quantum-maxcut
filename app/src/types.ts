@@ -80,6 +80,18 @@ export type HpcJobStatus =
   | "error"
   | "cancelled";
 
+export interface HpcPhaseUpdate {
+  phase: "positions" | "pulser" | "sdp" | "rounding";
+  completed_at: number;
+  duration_seconds: number;
+  magnetization_series?: { times: number[]; magnetization: number[][] } | null;
+  rounding_trials_series?: { seed: number; ratio_product: number }[] | null;
+}
+
+export interface HpcJobProgress {
+  phases: HpcPhaseUpdate[];
+}
+
 export interface HpcJob {
   job_id: string;
   status: HpcJobStatus;
@@ -89,6 +101,7 @@ export interface HpcJob {
   error?: string | null;
   created_at?: string;
   finished_at?: string | null;
+  progress?: HpcJobProgress | null;
 }
 
 export interface FamilyResultRow {

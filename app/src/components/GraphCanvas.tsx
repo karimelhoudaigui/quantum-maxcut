@@ -1,15 +1,29 @@
 import { Maximize2, MousePointer2, Rotate3D, ZoomIn } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 import { usePipelineStore } from "../stores/pipelineStore";
-import type { Edge, GraphResponse, Position } from "../types";
+import type { Edge, GraphResponse, HpcPhaseUpdate, Position } from "../types";
+
+const REPLAY_DURATION_MS = 3500;
+const MAGNETIZATION_COLOR_LOW = new THREE.Color(0x2f7dd6); // spin -1
+const MAGNETIZATION_COLOR_NEUTRAL = new THREE.Color(0x8b8f97); // spin ~0, indecis
+const MAGNETIZATION_COLOR_HIGH = new THREE.Color(0x78e4ca); // spin +1 (couleur par defaut)
 
 export function GraphCanvas() {
   const graph = usePipelineStore((state) => state.graph);
+  const hpcJob = usePipelineStore((state) => state.hpcJob);
   const mountRef = useRef<HTMLDivElement | null>(null);
   const [rendererError, setRendererError] = useState<string | null>(null);
+  const nodeMaterialsRef = useRef<Map<number, THREE.MeshStandardMaterial>>(new Map());
+  const renderRef = useRef<() => void>(() => {});
+
+  const pulserPhase: HpcPhaseUpdate | undefined = useMemo(
+    () => hpcJob?.progress?.phases.find((phase) => phase.phase === "pulser"),
+    [hpcJob?.progress?.phases],
+  );
+  const magnetizationSeries = pulserPhase?.magnetization_series ?? null;
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -73,8 +87,9 @@ export function GraphCanvas() {
     halo.position.z = -1.32;
     scene.add(halo);
 
+    nodeMaterialsRef.current.clear();
     if (graph) {
-      buildGraphScene(graphGroup, graph);
+      buildGraphScene(graphGroup, graph, nodeMaterialsRef.current);
     } else {
       buildEmptyScene(graphGroup);
     }
@@ -83,6 +98,7 @@ export function GraphCanvas() {
     const render = () => {
       renderer.render(scene, camera);
     };
+    renderRef.current = render;
 
     const resize = () => {
       const { width, height } = mount.getBoundingClientRect();
@@ -107,6 +123,8 @@ export function GraphCanvas() {
       controls.removeEventListener("change", render);
       controls.dispose();
       mount.removeChild(renderer.domElement);
+      renderRef.current = () => {};
+      nodeMaterialsRef.current.clear();
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh || object instanceof THREE.Line || object instanceof THREE.Sprite) {
           object.geometry?.dispose();
@@ -119,6 +137,51 @@ export function GraphCanvas() {
       renderer.dispose();
     };
   }, [graph]);
+
+  useEffect(() => {
+    if (!magnetizationSeries || magnetizationSeries.times.length === 0) {
+      return undefined;
+    }
+
+    const { times, magnetization } = magnetizationSeries;
+    const totalTime = times[times.length - 1] - times[0] || 1;
+    const startedAt = performance.now();
+    let frameId: number;
+
+    const tick = () => {
+      const elapsedFraction = Math.min(1, (performance.now() - startedAt) / REPLAY_DURATION_MS);
+      const targetTime = times[0] + elapsedFraction * totalTime;
+
+      let frameIndex = 0;
+      while (frameIndex < times.length - 1 && times[frameIndex + 1] <= targetTime) {
+        frameIndex += 1;
+      }
+
+      const frame = magnetization[frameIndex];
+      if (frame) {
+        for (const [nodeId, material] of nodeMaterialsRef.current.entries()) {
+          const sz = frame[nodeId];
+          if (sz === undefined) {
+            continue;
+          }
+          const color =
+            sz >= 0
+              ? MAGNETIZATION_COLOR_NEUTRAL.clone().lerp(MAGNETIZATION_COLOR_HIGH, sz)
+              : MAGNETIZATION_COLOR_NEUTRAL.clone().lerp(MAGNETIZATION_COLOR_LOW, -sz);
+          material.color.copy(color);
+          material.emissive.copy(color).multiplyScalar(0.3);
+        }
+        renderRef.current();
+      }
+
+      if (elapsedFraction < 1) {
+        frameId = requestAnimationFrame(tick);
+      }
+    };
+
+    frameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameId);
+  }, [magnetizationSeries]);
 
   return (
     <section className="relative h-[620px] min-h-[620px] overflow-hidden rounded-md border border-border bg-background shadow-panel">
@@ -147,7 +210,11 @@ export function GraphCanvas() {
   );
 }
 
-function buildGraphScene(group: THREE.Group, graph: GraphResponse) {
+function buildGraphScene(
+  group: THREE.Group,
+  graph: GraphResponse,
+  nodeMaterials: Map<number, THREE.MeshStandardMaterial>,
+) {
   const positions = normalizedPositions(graph);
   const degree = degreeMap(graph.edges);
 
@@ -169,6 +236,7 @@ function buildGraphScene(group: THREE.Group, graph: GraphResponse) {
     node.userData.kind = "node";
     node.userData.phase = position.id * 0.8;
     group.add(node);
+    nodeMaterials.set(position.id, node.material as THREE.MeshStandardMaterial);
 
     const label = createLabel(String(position.id));
     label.position.copy(point).add(new THREE.Vector3(0, 0, 0.38 + (degree.get(position.id) ?? 0) * 0.01));

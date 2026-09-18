@@ -114,7 +114,19 @@ def evaluate_fixed_hybrid_sequence_on_graph(
     max_iter=500,
     tol=1e-5,
     enable_animations=False,
+    on_phase_complete=None,
 ):
+    """
+    on_phase_complete, si fourni, est appelé après chaque phase avec
+    (phase_name, {"duration_seconds": float, ...données spécifiques à la
+    phase si enable_animations}) — permet à l'appelant (ex. run_job.py sur
+    le worker) de streamer une progression pendant que le calcul avance,
+    sans attendre la fin des 4 phases.
+    """
+    def notify(phase_name, extra=None):
+        if on_phase_complete is not None:
+            on_phase_complete(phase_name, extra or {})
+
     t_positions_start = time.perf_counter()
     positions, couplings, mapping_error = optimize_atom_positions(
         target_edges,
@@ -123,6 +135,7 @@ def evaluate_fixed_hybrid_sequence_on_graph(
         tol=tol,
     )
     positions_duration_seconds = time.perf_counter() - t_positions_start
+    notify("positions", {"duration_seconds": positions_duration_seconds})
 
     pulser_out = evaluate_smooth_pulser_final_state(
         n=n,
@@ -141,6 +154,10 @@ def evaluate_fixed_hybrid_sequence_on_graph(
         scale=scale,
         enable_animations=enable_animations,
     )
+    notify("pulser", {
+        "duration_seconds": float(pulser_out["duration_seconds"]),
+        "magnetization_series": pulser_out["magnetization_series"],
+    })
 
     corrs = compute_edge_correlators(pulser_out["rho_T"], n, target_edges)
 
@@ -153,6 +170,11 @@ def evaluate_fixed_hybrid_sequence_on_graph(
         n_roundings=n_roundings,
         enable_animations=enable_animations,
     )
+    notify("sdp", {"duration_seconds": float(hybrid_out["sdp_duration_seconds"])})
+    notify("rounding", {
+        "duration_seconds": float(hybrid_out["rounding_duration_seconds"]),
+        "rounding_trials_series": hybrid_out["rounding_trials_series"],
+    })
 
     return {
         "n": int(n),

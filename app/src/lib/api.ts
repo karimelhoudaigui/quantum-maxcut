@@ -92,6 +92,7 @@ export function getFamilyResults(family = "all"): Promise<FamilyResultRow[]> {
 export async function runHpcPipeline(
   config: GraphGenerateRequest,
   annealing: AnnealingConfig,
+  enableAnimations: boolean,
 ): Promise<HpcJob> {
   return request<HpcJob>("/api/jobs", {
     baseUrl: HPC_BRIDGE_URL,
@@ -109,6 +110,7 @@ export async function runHpcPipeline(
       },
       annealing,
       seed: 1234,
+      enable_animations: enableAnimations,
     }),
   });
 }

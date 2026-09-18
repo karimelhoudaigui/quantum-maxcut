@@ -5,11 +5,13 @@ import type { AnnealingConfig, GraphGenerateRequest, GraphResponse, HpcJob, Pipe
 interface PipelineState {
   config: GraphGenerateRequest;
   annealing: AnnealingConfig;
+  enableAnimations: boolean;
   graph: GraphResponse | null;
   job: PipelineJob | null;
   hpcJob: HpcJob | null;
   setConfig: (config: Partial<GraphGenerateRequest>) => void;
   setAnnealing: (annealing: Partial<AnnealingConfig>) => void;
+  setEnableAnimations: (enableAnimations: boolean) => void;
   setGraph: (graph: GraphResponse) => void;
   setJob: (job: PipelineJob | null) => void;
   setHpcJob: (job: HpcJob | null) => void;
@@ -36,11 +38,13 @@ export const usePipelineStore = create<PipelineState>((set) => ({
     sampling_rate: 0.05,
     n_roundings: 32,
   },
+  enableAnimations: false,
   graph: null,
   job: null,
   hpcJob: null,
   setConfig: (config) => set((state) => ({ config: { ...state.config, ...config } })),
   setAnnealing: (annealing) => set((state) => ({ annealing: { ...state.annealing, ...annealing } })),
+  setEnableAnimations: (enableAnimations) => set({ enableAnimations }),
   setGraph: (graph) => set({ graph }),
   setJob: (job) => set({ job }),
   setHpcJob: (hpcJob) => set({ hpcJob }),
