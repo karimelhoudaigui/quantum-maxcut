@@ -31,11 +31,11 @@ function getHpcToken(): string {
 async function request<T>(path: string, init?: ApiRequestInit): Promise<T> {
   const { baseUrl = API_BASE, ...requestInit } = init ?? {};
   const response = await fetch(`${baseUrl}${path}`, {
+    ...requestInit,
     headers: {
       "Content-Type": "application/json",
       ...requestInit.headers,
     },
-    ...requestInit,
   });
 
   if (!response.ok) {
