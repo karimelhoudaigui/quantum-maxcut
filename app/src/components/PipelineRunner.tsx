@@ -1,16 +1,30 @@
 import { Activity, Check, Cloud, Loader2, X } from "lucide-react";
+import { useMemo } from "react";
 
 import { usePipelineRunner } from "../hooks/usePipeline";
 import { usePipelineStore } from "../stores/pipelineStore";
-import type { PipelineStep } from "../types";
+import type { HpcPhaseUpdate, PipelineStep } from "../types";
+
+const HPC_PHASE_TO_STEP: Record<HpcPhaseUpdate["phase"], PipelineStep["id"]> = {
+  positions: "geometry",
+  pulser: "pulser",
+  sdp: "sdp",
+  rounding: "rounding",
+};
 
 export function PipelineRunner() {
   const graph = usePipelineStore((state) => state.graph);
   const job = usePipelineStore((state) => state.job);
   const hpcJob = usePipelineStore((state) => state.hpcJob);
   const { run, hpcRun } = usePipelineRunner();
-  const steps = job?.steps ?? [];
   const hpcActive = hpcJob && !["done", "error", "cancelled"].includes(hpcJob.status);
+
+  const steps = useMemo(() => {
+    if (hpcJob) {
+      return hpcStepsFromProgress(hpcJob.progress?.phases ?? [], hpcJob.status, hpcJob.result);
+    }
+    return job?.steps ?? [];
+  }, [hpcJob, job?.steps]);
 
   return (
     <section className="rounded-md border border-border bg-muted/25 p-4 shadow-panel">
@@ -30,13 +44,13 @@ export function PipelineRunner() {
         </button>
         <button
           type="button"
-          disabled={!graph || hpcRun.isPending || Boolean(hpcActive)}
+          disabled={!graph || hpcRun.isPending}
           onClick={() => hpcRun.mutate()}
           className="flex items-center gap-2 rounded-md border border-primary/60 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-45"
-          title="Submit this configuration to hpc-bridge"
+          title={hpcActive ? "Cancel the running HPC job and submit this configuration instead" : "Submit this configuration to hpc-bridge"}
         >
           {hpcRun.isPending || hpcActive ? <Loader2 className="animate-spin" size={16} /> : <Cloud size={16} />}
-          Run HPC
+          {hpcActive ? "Restart HPC" : "Run HPC"}
         </button>
       </div>
 
@@ -44,7 +58,7 @@ export function PipelineRunner() {
         <div className="h-full bg-primary transition-all duration-500" style={{ width: `${job?.progress ?? 0}%` }} />
       </div>
 
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {(steps.length > 0 ? steps : emptySteps).map((step) => (
           <StepCard key={step.id} step={step} />
         ))}
@@ -64,26 +78,31 @@ export function PipelineRunner() {
           </div>
           {hpcRun.error ? <p className="mt-2 text-red-200">{hpcRun.error.message}</p> : null}
           {hpcJob ? (
-            <p className="mt-2 text-foreground/70">
-              Status: <span className="font-medium text-foreground">{hpcJob.status}</span>
-              {hpcJob.slurm_job_id ? ` · SLURM ${hpcJob.slurm_job_id}` : ""}
-            </p>
-          ) : null}
-          {hpcJob?.error ? <p className="mt-2 text-red-200">{hpcJob.error}</p> : null}
-          {hpcJob?.progress?.phases.length ? (
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {hpcJob.progress.phases.map((phase) => (
-                <div key={phase.phase} className="rounded-md border border-border bg-background/60 p-2">
-                  <p className="text-[10px] font-medium uppercase text-foreground/45">{phase.phase}</p>
-                  <p className="font-mono text-xs text-primary">{phase.duration_seconds.toFixed(2)}s</p>
-                </div>
-              ))}
+            <div className="mt-2 flex items-center justify-between gap-3">
+              <p className="text-foreground/70">
+                Status: <span className="font-medium text-foreground">{hpcJob.status}</span>
+                {hpcJob.slurm_job_id ? ` · SLURM ${hpcJob.slurm_job_id}` : ""}
+              </p>
+              {hpcJob.result ? <ResultJson result={hpcJob.result} /> : null}
             </div>
           ) : null}
-          {hpcJob?.result ? <pre className="mt-2 max-h-40 overflow-auto text-xs text-foreground/65">{JSON.stringify(hpcJob.result, null, 2)}</pre> : null}
+          {hpcJob?.error ? <p className="mt-2 text-red-200">{hpcJob.error}</p> : null}
         </div>
       ) : null}
     </section>
+  );
+}
+
+function ResultJson({ result }: { result: Record<string, unknown> }) {
+  return (
+    <details className="shrink-0 rounded-md border border-border bg-background/60">
+      <summary className="cursor-pointer select-none px-2 py-1.5 text-xs font-medium text-foreground/60 hover:text-foreground">
+        Raw result JSON
+      </summary>
+      <pre className="max-h-40 overflow-auto border-t border-border p-2 text-xs text-foreground/65">
+        {JSON.stringify(result, null, 2)}
+      </pre>
+    </details>
   );
 }
 
@@ -94,6 +113,55 @@ const emptySteps: PipelineStep[] = [
   { id: "rounding", label: "Rounding", status: "pending", metric_label: "Ratio hybrid", metric_value: null },
 ];
 
+const STEP_RESULT_METRIC_KEY: Record<PipelineStep["id"], string> = {
+  geometry: "mapping_error",
+  pulser: "ratio_pulser",
+  sdp: "sdp_status",
+  rounding: "ratio_hybrid",
+};
+
+function hpcStepsFromProgress(
+  phases: HpcPhaseUpdate[],
+  jobStatus: string,
+  result: Record<string, unknown> | null | undefined,
+): PipelineStep[] {
+  const completedStepIds = new Set(phases.map((phase) => HPC_PHASE_TO_STEP[phase.phase]));
+  const jobFailed = jobStatus === "error" || jobStatus === "cancelled";
+  const jobRunning = jobStatus === "running";
+
+  return emptySteps.map((step, index) => {
+    if (completedStepIds.has(step.id)) {
+      const phase = phases.find((p) => HPC_PHASE_TO_STEP[p.phase] === step.id);
+      const metricValue = result?.[STEP_RESULT_METRIC_KEY[step.id]];
+      return {
+        ...step,
+        status: "completed",
+        metric_value: typeof metricValue === "number" || typeof metricValue === "string" ? metricValue : null,
+        duration_seconds: phase?.duration_seconds,
+      };
+    }
+    const previousCompleted = index === 0 || completedStepIds.has(emptySteps[index - 1].id);
+    if (jobFailed) {
+      return { ...step, status: previousCompleted ? "failed" : "pending" };
+    }
+    return { ...step, status: previousCompleted && jobRunning ? "running" : "pending" };
+  });
+}
+
+const STEP_STATUS_STYLES: Record<PipelineStep["status"], string> = {
+  pending: "border-border bg-background/70",
+  running: "border-primary/70 bg-primary/10 shadow-[0_0_0_1px_rgba(120,228,202,0.25)]",
+  completed: "border-primary bg-primary/20",
+  failed: "border-red-500/70 bg-red-500/10",
+};
+
+const STEP_STATUS_TEXT_STYLES: Record<PipelineStep["status"], string> = {
+  pending: "text-foreground/50",
+  running: "text-primary",
+  completed: "text-primary",
+  failed: "text-red-300",
+};
+
 function StepCard({ step }: { step: PipelineStep }) {
   const icon = {
     pending: <Activity size={15} />,
@@ -103,10 +171,13 @@ function StepCard({ step }: { step: PipelineStep }) {
   }[step.status];
 
   return (
-    <article className="min-h-28 rounded-md border border-border bg-background/70 p-3">
+    <article className={`min-h-28 rounded-md border p-3 transition-colors duration-500 ${STEP_STATUS_STYLES[step.status]}`}>
       <div className="mb-3 flex items-center justify-between">
-        <span className="text-xs font-medium uppercase text-foreground/50">{step.status}</span>
-        <span className="text-foreground/70">{icon}</span>
+        <span className={`text-xs font-medium uppercase ${STEP_STATUS_TEXT_STYLES[step.status]}`}>
+          {step.status}
+          {step.duration_seconds !== undefined ? ` · ${step.duration_seconds.toFixed(2)}s` : ""}
+        </span>
+        <span className={STEP_STATUS_TEXT_STYLES[step.status]}>{icon}</span>
       </div>
       <h3 className="text-sm font-semibold leading-tight">{step.label}</h3>
       <p className="mt-2 text-xs text-foreground/55">{step.metric_label}</p>

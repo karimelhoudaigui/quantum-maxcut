@@ -121,3 +121,11 @@ export function getHpcJob(jobId: string): Promise<HpcJob> {
     headers: { Authorization: `Bearer ${getHpcToken()}` },
   });
 }
+
+export function cancelHpcJob(jobId: string): Promise<{ status: string }> {
+  return request<{ status: string }>(`/api/jobs/${jobId}/cancel`, {
+    baseUrl: HPC_BRIDGE_URL,
+    method: "POST",
+    headers: { Authorization: `Bearer ${getHpcToken()}` },
+  });
+}
