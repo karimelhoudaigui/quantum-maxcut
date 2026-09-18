@@ -10,6 +10,7 @@ This module mirrors the existing Pulser-only graph study:
 """
 
 import os
+import time
 
 os.environ.setdefault("MPLCONFIGDIR", "/tmp")
 
@@ -112,13 +113,16 @@ def evaluate_fixed_hybrid_sequence_on_graph(
     seed=1234,
     max_iter=500,
     tol=1e-5,
+    enable_animations=False,
 ):
+    t_positions_start = time.perf_counter()
     positions, couplings, mapping_error = optimize_atom_positions(
         target_edges,
         n=n,
         max_iter=max_iter,
         tol=tol,
     )
+    positions_duration_seconds = time.perf_counter() - t_positions_start
 
     pulser_out = evaluate_smooth_pulser_final_state(
         n=n,
@@ -135,6 +139,7 @@ def evaluate_fixed_hybrid_sequence_on_graph(
         delta_end=delta_end,
         sampling_rate=sampling_rate,
         scale=scale,
+        enable_animations=enable_animations,
     )
 
     corrs = compute_edge_correlators(pulser_out["rho_T"], n, target_edges)
@@ -146,6 +151,7 @@ def evaluate_fixed_hybrid_sequence_on_graph(
         corrs=corrs,
         seed=seed,
         n_roundings=n_roundings,
+        enable_animations=enable_animations,
     )
 
     return {
@@ -170,6 +176,14 @@ def evaluate_fixed_hybrid_sequence_on_graph(
         "E_hybrid_in_qmc": float(hybrid_out["E_hybrid_in_qmc"]),
         "cut_assignment": [int(x) for x in hybrid_out["cut_assignment"]],
         "cut_assignment_value": float(hybrid_out["cut_assignment_value"]),
+        "phase_durations_seconds": {
+            "positions": positions_duration_seconds,
+            "pulser": float(pulser_out["duration_seconds"]),
+            "sdp": float(hybrid_out["sdp_duration_seconds"]),
+            "rounding": float(hybrid_out["rounding_duration_seconds"]),
+        },
+        "magnetization_series": pulser_out["magnetization_series"],
+        "rounding_trials_series": hybrid_out["rounding_trials_series"],
     }
 
 
