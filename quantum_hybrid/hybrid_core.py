@@ -108,7 +108,7 @@ def run_hybrid_postprocessing(
         choose_best_hybrid_result,
         evaluate_multiple_product_states_in_qmc,
     )
-    from .hybrid_rounding import round_sdp_to_product_state
+    from .hybrid_rounding import random_hyperplane_rounding, round_sdp_to_product_state
     from .hybrid_sdp import solve_proxy_sdp_from_correlators
 
     sdp_out = solve_proxy_sdp_from_correlators(
@@ -134,6 +134,12 @@ def run_hybrid_postprocessing(
     )
     best_rounding = eval_summary["best"]
 
+    hyperplane_out = random_hyperplane_rounding(
+        vectors=best_rounding["x_vectors"],
+        edges=target_edges,
+        seed=int(best_rounding["seed"]),
+    )
+
     final_out = choose_best_hybrid_result(
         ratio_pulser=ratio_pulser,
         ratio_product=best_rounding["ratio_product"],
@@ -153,6 +159,8 @@ def run_hybrid_postprocessing(
         "u_y": best_rounding["u_y"],
         "x_vectors": best_rounding["x_vectors"],
         "best_rounding_seed": best_rounding["seed"],
+        "cut_assignment": hyperplane_out["best_assignment"].tolist(),
+        "cut_assignment_value": hyperplane_out["best_value"],
         "n_roundings": int(n_roundings),
         "rounding_trials": eval_summary["all_results"],
         "E0_qmc": best_rounding["E0_qmc"],
