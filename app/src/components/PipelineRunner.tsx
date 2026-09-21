@@ -6,6 +6,7 @@ import { usePipelineStore } from "../stores/pipelineStore";
 import type { HpcPhaseUpdate, PipelineStep } from "../types";
 
 const HPC_PHASE_TO_STEP: Record<HpcPhaseUpdate["phase"], PipelineStep["id"]> = {
+  setup: "setup",
   positions: "geometry",
   pulser: "pulser",
   sdp: "sdp",
@@ -58,7 +59,7 @@ export function PipelineRunner() {
         <div className="h-full bg-primary transition-all duration-500" style={{ width: `${job?.progress ?? 0}%` }} />
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         {(steps.length > 0 ? steps : emptySteps).map((step) => (
           <StepCard key={step.id} step={step} />
         ))}
@@ -107,6 +108,7 @@ function ResultJson({ result }: { result: Record<string, unknown> }) {
 }
 
 const emptySteps: PipelineStep[] = [
+  { id: "setup", label: "Setup", status: "pending", metric_label: "Import duration", metric_value: null },
   { id: "geometry", label: "Geometry embedding", status: "pending", metric_label: "Mapping error", metric_value: null },
   { id: "pulser", label: "Pulser", status: "pending", metric_label: "Ratio Pulser", metric_value: null },
   { id: "sdp", label: "SDP", status: "pending", metric_label: "Status", metric_value: null },
@@ -114,6 +116,7 @@ const emptySteps: PipelineStep[] = [
 ];
 
 const STEP_RESULT_METRIC_KEY: Record<PipelineStep["id"], string> = {
+  setup: "setup_duration_seconds",
   geometry: "mapping_error",
   pulser: "ratio_pulser",
   sdp: "sdp_status",
