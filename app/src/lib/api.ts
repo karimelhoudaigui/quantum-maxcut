@@ -3,6 +3,7 @@ import type {
   FamilyResultRow,
   GraphGenerateRequest,
   GraphResponse,
+  HpcJob,
   PipelineJob,
 } from "../types";
 import {
@@ -14,14 +15,27 @@ import {
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").trim().replace(/\/$/, "");
 const HAS_REMOTE_API = API_BASE.length > 0;
+const HPC_BRIDGE_URL = (import.meta.env.VITE_HPC_BRIDGE_URL ?? "").trim().replace(/\/$/, "");
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
+type ApiRequestInit = RequestInit & { baseUrl?: string };
+
+function getHpcToken(): string {
+  let token = localStorage.getItem("hpc_bridge_token");
+  if (!token) {
+    token = window.prompt("Jeton d'accès HPC :")?.trim() ?? "";
+    if (token) localStorage.setItem("hpc_bridge_token", token);
+  }
+  return token;
+}
+
+async function request<T>(path: string, init?: ApiRequestInit): Promise<T> {
+  const { baseUrl = API_BASE, ...requestInit } = init ?? {};
+  const response = await fetch(`${baseUrl}${path}`, {
+    ...requestInit,
     headers: {
       "Content-Type": "application/json",
-      ...init?.headers,
+      ...requestInit.headers,
     },
-    ...init,
   });
 
   if (!response.ok) {
@@ -73,4 +87,45 @@ export function getFamilyResults(family = "all"): Promise<FamilyResultRow[]> {
   }
 
   return request<FamilyResultRow[]>(`/api/results/${family}`).catch(() => getLocalFamilyResults(family));
+}
+
+export async function runHpcPipeline(
+  config: GraphGenerateRequest,
+  annealing: AnnealingConfig,
+  enableAnimations: boolean,
+): Promise<HpcJob> {
+  return request<HpcJob>("/api/jobs", {
+    baseUrl: HPC_BRIDGE_URL,
+    method: "POST",
+    headers: { Authorization: `Bearer ${getHpcToken()}` },
+    body: JSON.stringify({
+      kind: "hybrid_pipeline",
+      graph: {
+        family: config.family,
+        n_nodes: config.n_nodes,
+        density: config.density,
+        weight_min: config.weight_min,
+        weight_max: config.weight_max,
+        seed: config.seed,
+      },
+      annealing,
+      seed: 1234,
+      enable_animations: enableAnimations,
+    }),
+  });
+}
+
+export function getHpcJob(jobId: string): Promise<HpcJob> {
+  return request<HpcJob>(`/api/jobs/${jobId}`, {
+    baseUrl: HPC_BRIDGE_URL,
+    headers: { Authorization: `Bearer ${getHpcToken()}` },
+  });
+}
+
+export function cancelHpcJob(jobId: string): Promise<HpcJob> {
+  return request<HpcJob>(`/api/jobs/${jobId}/cancel`, {
+    baseUrl: HPC_BRIDGE_URL,
+    method: "POST",
+    headers: { Authorization: `Bearer ${getHpcToken()}` },
+  });
 }

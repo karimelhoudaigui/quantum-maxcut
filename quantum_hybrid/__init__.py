@@ -1,4 +1,5 @@
 from .hybrid_core import (
+    default_rounding_workers,
     run_hybrid_postprocessing,
     run_hybrid_on_pulser_output,
 )
@@ -10,12 +11,14 @@ from .hybrid_sdp import (
 )
 
 from .hybrid_rounding import (
+    prepare_sdp_rounding_vectors,
     round_sdp_to_product_state,
 )
 
 from .hybrid_eval import (
     evaluate_product_state_in_qmc,
     evaluate_multiple_product_states_in_qmc,
+    prepare_qmc_ground_state,
     choose_best_hybrid_result,
 )
 

@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 
 from pulser import Pulse, Sequence
@@ -10,6 +12,7 @@ from .pulser_core import (
     build_xy_register,
     expectation_value,
     extract_final_statevector_from_result,
+    extract_magnetization_time_series,
     run_pulser_sequence,
     state_overlap_pure,
     statevector_to_density,
@@ -80,13 +83,22 @@ def evaluate_smooth_pulser_final_state(
     delta_end,
     sampling_rate=0.05,
     scale=15.5,
+    enable_animations=False,
 ):
+    # Chronométrage fin pour identifier ce qui domine réellement le temps de
+    # la phase "Pulser" côté UI (ground_state — np.linalg.eigh, dans notre
+    # code — vs run_pulser_sequence, la simulation qutip elle-même, dans la
+    # lib pulser_simulation) avant de choisir où agir pour l'accélérer.
+    t_ground_state_qmc_start = time.perf_counter()
     H_qmc = build_qmc_hamiltonian(n, target_edges)
     E0_qmc, psi_qmc = ground_state(H_qmc)
+    ground_state_qmc_duration_seconds = time.perf_counter() - t_ground_state_qmc_start
 
+    t_ground_state_r_start = time.perf_counter()
     couplings = couplings_from_positions(positions, c3=1.0)
     H_r = build_xy_hamiltonian(n, couplings)
     E0_r, psi_r = ground_state(H_r)
+    ground_state_r_duration_seconds = time.perf_counter() - t_ground_state_r_start
 
     seq = build_xy_smooth_sequence(
         positions=positions,
@@ -102,9 +114,16 @@ def evaluate_smooth_pulser_final_state(
         scale=scale,
     )
 
+    t_start = time.perf_counter()
     result = run_pulser_sequence(seq, sampling_rate=sampling_rate)
+    duration_seconds = time.perf_counter() - t_start
+
     psi_T = extract_final_statevector_from_result(result)
     rho_T = statevector_to_density(psi_T)
+
+    magnetization_series = (
+        extract_magnetization_time_series(result, n=n) if enable_animations else None
+    )
 
     E_proxy_exact_in_qmc = expectation_value(statevector_to_density(psi_r), H_qmc)
     E_pulser_in_qmc = expectation_value(rho_T, H_qmc)
@@ -129,6 +148,10 @@ def evaluate_smooth_pulser_final_state(
         "ratio_proxy_exact": ratio_proxy_exact,
         "ratio_pulser": ratio_pulser,
         "overlap_proxy": overlap_proxy,
+        "duration_seconds": duration_seconds,
+        "ground_state_qmc_duration_seconds": ground_state_qmc_duration_seconds,
+        "ground_state_r_duration_seconds": ground_state_r_duration_seconds,
+        "magnetization_series": magnetization_series,
     }
 
 

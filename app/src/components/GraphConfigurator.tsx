@@ -10,12 +10,16 @@ const families: GraphFamily[] = ["path", "cycle", "star", "complete", "random"];
 export function GraphConfigurator() {
   const config = usePipelineStore((state) => state.config);
   const annealing = usePipelineStore((state) => state.annealing);
+  const enableAnimations = usePipelineStore((state) => state.enableAnimations);
+  const randomizeSeed = usePipelineStore((state) => state.randomizeSeed);
   const setConfig = usePipelineStore((state) => state.setConfig);
   const setAnnealing = usePipelineStore((state) => state.setAnnealing);
+  const setEnableAnimations = usePipelineStore((state) => state.setEnableAnimations);
+  const setRandomizeSeed = usePipelineStore((state) => state.setRandomizeSeed);
   const generation = useGraphGeneration();
 
   return (
-    <aside className="flex h-[100svh] min-h-0 flex-col overflow-y-auto overscroll-contain border-r border-border bg-muted/30 p-5">
+    <aside className="flex min-h-0 flex-col overflow-y-auto overscroll-contain border-b border-border bg-muted/30 p-4 sm:p-5 lg:h-[100svh] lg:border-b-0 lg:border-r">
       <div className="mb-6 flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-md border border-primary/40 bg-primary text-xs font-black tracking-tight text-background">
           QO
@@ -27,6 +31,44 @@ export function GraphConfigurator() {
       </div>
 
       <div className="space-y-5">
+        <button
+          type="button"
+          onClick={() => generation.mutate()}
+          disabled={generation.isPending}
+          className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-3 text-sm font-semibold text-background transition hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
+        >
+          {generation.isPending ? <RefreshCw className="animate-spin" size={16} /> : <Play size={16} />}
+          Generate graph
+        </button>
+
+        {generation.error ? (
+          <p className="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+            {generation.error.message}
+          </p>
+        ) : null}
+
+        <div className="flex items-center gap-2 rounded-md border border-border bg-background/70 px-3 py-2">
+          <label className="flex flex-1 items-center gap-2 text-sm">
+            <span className="text-foreground/60">Seed</span>
+            <input
+              type="number"
+              value={config.seed}
+              disabled={randomizeSeed}
+              onChange={(event) => setConfig({ seed: Number(event.target.value) })}
+              className="w-full min-w-0 rounded-md border border-border bg-background px-2 py-1 font-mono text-sm outline-none focus:ring-2 focus:ring-primary disabled:opacity-45"
+            />
+          </label>
+          <label className="flex items-center gap-2 text-xs text-foreground/60">
+            <input
+              type="checkbox"
+              checked={randomizeSeed}
+              onChange={(event) => setRandomizeSeed(event.target.checked)}
+              className="h-4 w-4 accent-primary"
+            />
+            Randomize
+          </label>
+        </div>
+
         <label className="block">
           <span className="text-sm font-medium text-foreground/80">Graph family</span>
           <select
@@ -82,6 +124,19 @@ export function GraphConfigurator() {
             type="checkbox"
             checked={config.optimize_geometry}
             onChange={(event) => setConfig({ optimize_geometry: event.target.checked })}
+            className="h-4 w-4 accent-primary"
+          />
+        </label>
+
+        <label className="flex items-center justify-between rounded-md border border-border bg-background/70 px-3 py-3 text-sm">
+          <div>
+            <span>HPC animations</span>
+            <p className="text-xs text-foreground/50">Magnetization replay &amp; rounding search (HPC run only)</p>
+          </div>
+          <input
+            type="checkbox"
+            checked={enableAnimations}
+            onChange={(event) => setEnableAnimations(event.target.checked)}
             className="h-4 w-4 accent-primary"
           />
         </label>
@@ -205,22 +260,6 @@ export function GraphConfigurator() {
             <MiniMetric label="Mode" value={<Waves size={15} />} />
           </div>
         </div>
-
-        <button
-          type="button"
-          onClick={() => generation.mutate()}
-          disabled={generation.isPending}
-          className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-3 text-sm font-semibold text-background transition hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
-        >
-          {generation.isPending ? <RefreshCw className="animate-spin" size={16} /> : <Play size={16} />}
-          Generate graph
-        </button>
-
-        {generation.error ? (
-          <p className="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
-            {generation.error.message}
-          </p>
-        ) : null}
       </div>
     </aside>
   );

@@ -10,6 +10,7 @@ This module mirrors the existing Pulser-only graph study:
 """
 
 import os
+import time
 
 os.environ.setdefault("MPLCONFIGDIR", "/tmp")
 
@@ -112,13 +113,39 @@ def evaluate_fixed_hybrid_sequence_on_graph(
     seed=1234,
     max_iter=500,
     tol=1e-5,
+    enable_animations=False,
+    on_phase_complete=None,
+    n_workers=None,
+    on_rounding_progress=None,
 ):
+    """
+    on_phase_complete, si fourni, est appelé après chaque phase avec
+    (phase_name, {"duration_seconds": float, ...données spécifiques à la
+    phase si enable_animations}) — permet à l'appelant (ex. run_job.py sur
+    le worker) de streamer une progression pendant que le calcul avance,
+    sans attendre la fin des 4 phases.
+
+    n_workers : nombre de processus pour paralléliser la boucle des
+    n_roundings essais de rounding (cf. run_hybrid_postprocessing). None ->
+    un par cœur disponible (default_rounding_workers()).
+
+    on_rounding_progress, si fourni, est appelé (done, total) après chaque
+    essai de rounding terminé — sous-progression à l'intérieur de la phase
+    "rounding" elle-même, streamée en plus des 4/5 notify() par phase.
+    """
+    def notify(phase_name, extra=None):
+        if on_phase_complete is not None:
+            on_phase_complete(phase_name, extra or {})
+
+    t_positions_start = time.perf_counter()
     positions, couplings, mapping_error = optimize_atom_positions(
         target_edges,
         n=n,
         max_iter=max_iter,
         tol=tol,
     )
+    positions_duration_seconds = time.perf_counter() - t_positions_start
+    notify("positions", {"duration_seconds": positions_duration_seconds})
 
     pulser_out = evaluate_smooth_pulser_final_state(
         n=n,
@@ -135,7 +162,17 @@ def evaluate_fixed_hybrid_sequence_on_graph(
         delta_end=delta_end,
         sampling_rate=sampling_rate,
         scale=scale,
+        enable_animations=enable_animations,
     )
+    notify("pulser", {
+        "duration_seconds": float(pulser_out["duration_seconds"]),
+        # Détail pour diagnostiquer ce qui domine dans la phase "pulser" :
+        # ground_state (np.linalg.eigh, notre code) vs run_pulser_sequence
+        # (simulation qutip elle-même, déjà couverte par duration_seconds).
+        "ground_state_qmc_duration_seconds": float(pulser_out["ground_state_qmc_duration_seconds"]),
+        "ground_state_r_duration_seconds": float(pulser_out["ground_state_r_duration_seconds"]),
+        "magnetization_series": pulser_out["magnetization_series"],
+    })
 
     corrs = compute_edge_correlators(pulser_out["rho_T"], n, target_edges)
 
@@ -146,7 +183,15 @@ def evaluate_fixed_hybrid_sequence_on_graph(
         corrs=corrs,
         seed=seed,
         n_roundings=n_roundings,
+        enable_animations=enable_animations,
+        n_workers=n_workers,
+        on_rounding_progress=on_rounding_progress,
     )
+    notify("sdp", {"duration_seconds": float(hybrid_out["sdp_duration_seconds"])})
+    notify("rounding", {
+        "duration_seconds": float(hybrid_out["rounding_duration_seconds"]),
+        "rounding_trials_series": hybrid_out["rounding_trials_series"],
+    })
 
     return {
         "n": int(n),
@@ -168,6 +213,25 @@ def evaluate_fixed_hybrid_sequence_on_graph(
         "E_pulser_in_qmc": float(pulser_out["E_pulser_in_qmc"]),
         "E_product_best_in_qmc": float(hybrid_out["E_product_in_qmc"]),
         "E_hybrid_in_qmc": float(hybrid_out["E_hybrid_in_qmc"]),
+        "cut_assignment": [int(x) for x in hybrid_out["cut_assignment"]],
+        "cut_assignment_value": float(hybrid_out["cut_assignment_value"]),
+        "phase_durations_seconds": {
+            "positions": positions_duration_seconds,
+            "pulser": float(pulser_out["duration_seconds"]),
+            "sdp": float(hybrid_out["sdp_duration_seconds"]),
+            "rounding": float(hybrid_out["rounding_duration_seconds"]),
+        },
+        # Détail du temps passé DANS la phase "pulser" : ground_state (notre
+        # code, np.linalg.eigh) vs run_pulser_sequence (la simulation qutip
+        # elle-même, = phase_durations_seconds["pulser"] moins ces deux
+        # durées) — pour savoir où agir en priorité pour l'accélérer.
+        "pulser_breakdown_seconds": {
+            "ground_state_qmc": float(pulser_out["ground_state_qmc_duration_seconds"]),
+            "ground_state_r": float(pulser_out["ground_state_r_duration_seconds"]),
+            "run_pulser_sequence": float(pulser_out["duration_seconds"]),
+        },
+        "magnetization_series": pulser_out["magnetization_series"],
+        "rounding_trials_series": hybrid_out["rounding_trials_series"],
     }
 
 

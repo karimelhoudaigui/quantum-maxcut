@@ -85,10 +85,10 @@ export default function App() {
   }
 
   return (
-    <div className="h-[100svh] overflow-hidden bg-background text-foreground">
-      <div className="grid h-full min-h-0 grid-cols-[320px_minmax(0,1fr)_380px]">
+    <div className="min-h-[100svh] bg-background text-foreground lg:h-[100svh] lg:overflow-hidden">
+      <div className="grid min-h-0 grid-cols-1 lg:h-full lg:grid-cols-[320px_minmax(0,1fr)_380px]">
         <GraphConfigurator />
-        <main className="flex min-h-0 min-w-0 flex-col gap-5 overflow-y-auto overscroll-contain p-5">
+        <main className="flex min-h-0 min-w-0 flex-col gap-5 overflow-y-auto overscroll-contain p-4 sm:p-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
@@ -99,9 +99,9 @@ export default function App() {
               >
                 <ArrowLeft size={18} />
               </button>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-medium uppercase text-foreground/50">Production console</p>
-                <h1 className="text-3xl font-semibold">Neutral-atom MaxCut lab</h1>
+                <h1 className="truncate text-xl font-semibold sm:text-3xl">Neutral-atom MaxCut lab</h1>
               </div>
             </div>
             <button

@@ -3,7 +3,7 @@ import numpy as np
 from pulser import Register
 from pulser_simulation import QutipEmulator
 
-from quantum_utils import I2, X, Y, Z, two_body_correlator
+from quantum_utils import I2, X, Y, Z, one_body_operator, two_body_correlator
 
 
 def build_xy_register(positions, scale=15.5):
@@ -12,11 +12,14 @@ def build_xy_register(positions, scale=15.5):
     return Register(qubits)
 
 
+def _statevector_from_qutip_state(state):
+    if hasattr(state, "full"):
+        return state.full().flatten()
+    return np.asarray(state).flatten()
+
+
 def extract_final_statevector_from_result(result):
-    final_state = result.states[-1]
-    if hasattr(final_state, "full"):
-        return final_state.full().flatten()
-    return np.asarray(final_state).flatten()
+    return _statevector_from_qutip_state(result.states[-1])
 
 
 def statevector_to_density(psi):
@@ -35,6 +38,29 @@ def state_overlap_pure(psi, phi):
 def run_pulser_sequence(seq, sampling_rate=0.05):
     sim = QutipEmulator.from_sequence(seq, sampling_rate=sampling_rate)
     return sim.run()
+
+
+def extract_magnetization_time_series(result, n, max_points=60):
+    """
+    Extrait <Sz_i>(t) pour chaque site i à partir des états intermédiaires
+    déjà conservés en mémoire par qutip (result.states), sous-échantillonnés
+    à au plus max_points instants pour rester léger à transmettre/animer.
+    """
+    n_states = len(result.states)
+    if n_states == 0:
+        return {"times": [], "magnetization": []}
+
+    indices = sorted(set(np.linspace(0, n_states - 1, min(max_points, n_states), dtype=int).tolist()))
+    sz_ops = [one_body_operator(n, site, Z) for site in range(n)]
+
+    times = [float(result._sim_times[k]) for k in indices]
+    magnetization = []
+    for k in indices:
+        psi = _statevector_from_qutip_state(result.states[k])
+        rho = statevector_to_density(psi)
+        magnetization.append([expectation_value(rho, op) for op in sz_ops])
+
+    return {"times": times, "magnetization": magnetization}
 
 
 def compute_edge_correlators(rho, n, edges):

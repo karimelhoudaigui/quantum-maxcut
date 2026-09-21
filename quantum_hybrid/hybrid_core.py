@@ -13,6 +13,7 @@ comparison against the raw Pulser state.
 """
 
 import itertools
+import os
 
 import numpy as np
 
@@ -90,6 +91,43 @@ def exact_maxcut_bruteforce(n, edges):
     }
 
 
+def default_rounding_workers():
+    """
+    Nombre de processus par défaut pour paralléliser la boucle de rounding :
+    priorité aux variables de threading positionnées par le worker HPC
+    (OMP_NUM_THREADS, cf. hpc-bridge/worker/hpc_worker.py --cpus-per-task),
+    sinon os.cpu_count() (cœurs visibles de la machine).
+    """
+    for env_var in ("OMP_NUM_THREADS", "SLURM_CPUS_PER_TASK"):
+        value = os.environ.get(env_var)
+        if value:
+            try:
+                parsed = int(value)
+                if parsed > 0:
+                    return parsed
+            except ValueError:
+                pass
+    return os.cpu_count() or 1
+
+
+def _rounding_trial(args):
+    """
+    Exécute un seul essai de rounding (tirage + évaluation dans le QMC) —
+    doit rester une fonction top-level du module pour être picklable par
+    multiprocessing. n, target_edges, vec_out et h_qmc_out sont partagés en
+    lecture seule entre tous les essais (fixes pour tout le graphe/Delta) ;
+    seul trial_seed varie d'un essai à l'autre.
+    """
+    n, target_edges, vec_out, h_qmc_out, trial_seed = args
+
+    from .hybrid_eval import evaluate_product_state_in_qmc
+    from .hybrid_rounding import round_sdp_to_product_state
+
+    rounding_out = round_sdp_to_product_state(n=n, seed=trial_seed, vec_out=vec_out)
+    eval_out = evaluate_product_state_in_qmc(n=n, rho_product=rounding_out["rho_product"], h_qmc_out=h_qmc_out)
+    return {**rounding_out, **eval_out, "seed": trial_seed}
+
+
 def run_hybrid_postprocessing(
     n,
     target_edges,
@@ -98,41 +136,96 @@ def run_hybrid_postprocessing(
     E_pulser_in_qmc,
     seed=1234,
     n_roundings=32,
+    enable_animations=False,
+    n_workers=None,
+    on_rounding_progress=None,
 ):
     """
     Pipeline complet :
     corrélations Pulser -> SDP -> plusieurs roundings -> meilleur état produit
     -> comparaison finale.
+
+    n_workers : nombre de processus pour paralléliser la boucle des
+    n_roundings essais (embarrassingly parallel — chaque essai est
+    indépendant des autres, seul le seed varie). None -> default_rounding_
+    workers(). 1 -> exécution séquentielle, sans sous-process.
+
+    on_rounding_progress, si fourni, est appelé après chaque essai terminé
+    avec (done, total) — permet de streamer une progression "X/n_roundings"
+    pendant que la boucle avance, au lieu d'attendre les n_roundings essais.
     """
+    import time
+
     from .hybrid_eval import (
         choose_best_hybrid_result,
-        evaluate_multiple_product_states_in_qmc,
+        prepare_qmc_ground_state,
     )
-    from .hybrid_rounding import round_sdp_to_product_state
+    from .hybrid_rounding import prepare_sdp_rounding_vectors, random_hyperplane_rounding
     from .hybrid_sdp import solve_proxy_sdp_from_correlators
 
+    t_sdp_start = time.perf_counter()
     sdp_out = solve_proxy_sdp_from_correlators(
         n=n,
         corrs=corrs,
         target_edges=target_edges,
     )
+    sdp_duration_seconds = time.perf_counter() - t_sdp_start
     Delta = sdp_out["Delta"]
 
-    rounding_candidates = []
-    for trial in range(int(n_roundings)):
-        trial_seed = int(seed) + trial
-        rounding_out = round_sdp_to_product_state(n=n, Delta=Delta, seed=trial_seed)
-        rounding_candidates.append({
-            **rounding_out,
-            "seed": trial_seed,
-        })
+    t_rounding_start = time.perf_counter()
+    # La factorisation spectrale de Delta (prepare_sdp_rounding_vectors) et la
+    # diagonalisation exacte de H_qmc (prepare_qmc_ground_state) sont toutes
+    # deux indépendantes du seed : on ne les calcule qu'une fois et on les
+    # réutilise pour chacun des n_roundings essais, au lieu de les refaire
+    # (décompositions eigh coûteuses) à chaque tour de boucle.
+    vec_out = prepare_sdp_rounding_vectors(n=n, Delta=Delta)
+    h_qmc_out = prepare_qmc_ground_state(n=n, target_edges=target_edges)
 
-    eval_summary = evaluate_multiple_product_states_in_qmc(
-        n=n,
-        target_edges=target_edges,
-        candidates=rounding_candidates,
+    n_roundings = int(n_roundings)
+    trial_args = [(n, target_edges, vec_out, h_qmc_out, int(seed) + trial) for trial in range(n_roundings)]
+
+    workers = default_rounding_workers() if n_workers is None else int(n_workers)
+    workers = max(1, min(workers, n_roundings)) if n_roundings > 0 else 1
+
+    rounding_candidates = []
+    if workers <= 1:
+        for i, args in enumerate(trial_args):
+            rounding_candidates.append(_rounding_trial(args))
+            if on_rounding_progress is not None:
+                on_rounding_progress(i + 1, n_roundings)
+    else:
+        import multiprocessing as mp
+
+        # imap_unordered : chaque essai est indépendant et interchangeable
+        # (seul "best" selon ratio_product compte au final), donc l'ordre
+        # d'arrivée n'a pas d'importance — ça permet de rapporter la
+        # progression dès qu'un essai termine, sans attendre les plus lents.
+        with mp.Pool(processes=workers) as pool:
+            for i, result in enumerate(pool.imap_unordered(_rounding_trial, trial_args)):
+                rounding_candidates.append(result)
+                if on_rounding_progress is not None:
+                    on_rounding_progress(i + 1, n_roundings)
+
+    best_rounding = max(rounding_candidates, key=lambda row: row["ratio_product"])
+    eval_summary = {"best": best_rounding, "all_results": rounding_candidates}
+    rounding_duration_seconds = time.perf_counter() - t_rounding_start
+
+    rounding_trials_series = None
+    if enable_animations:
+        # Triés par seed : avec la parallélisation (imap_unordered), les essais
+        # arrivent dans l'ordre où ils terminent, pas dans l'ordre des seeds —
+        # on retrie ici pour que l'animation affiche une progression cohérente
+        # (seed croissant), comme avant la parallélisation.
+        rounding_trials_series = [
+            {"seed": int(row["seed"]), "ratio_product": float(row["ratio_product"])}
+            for row in sorted(eval_summary["all_results"], key=lambda row: row["seed"])
+        ]
+
+    hyperplane_out = random_hyperplane_rounding(
+        vectors=best_rounding["x_vectors"],
+        edges=target_edges,
+        seed=int(best_rounding["seed"]),
     )
-    best_rounding = eval_summary["best"]
 
     final_out = choose_best_hybrid_result(
         ratio_pulser=ratio_pulser,
@@ -153,8 +246,13 @@ def run_hybrid_postprocessing(
         "u_y": best_rounding["u_y"],
         "x_vectors": best_rounding["x_vectors"],
         "best_rounding_seed": best_rounding["seed"],
+        "cut_assignment": hyperplane_out["best_assignment"].tolist(),
+        "cut_assignment_value": hyperplane_out["best_value"],
         "n_roundings": int(n_roundings),
         "rounding_trials": eval_summary["all_results"],
+        "rounding_trials_series": rounding_trials_series,
+        "sdp_duration_seconds": sdp_duration_seconds,
+        "rounding_duration_seconds": rounding_duration_seconds,
         "E0_qmc": best_rounding["E0_qmc"],
         "E_product_in_qmc": best_rounding["E_product_in_qmc"],
         "ratio_product": best_rounding["ratio_product"],
@@ -173,6 +271,9 @@ def run_hybrid_on_pulser_output(
     corrs,
     seed=1234,
     n_roundings=32,
+    enable_animations=False,
+    n_workers=None,
+    on_rounding_progress=None,
 ):
     """
     Wrapper pratique quand evaluate_smooth_pulser_final_state a déjà tourné.
@@ -185,4 +286,7 @@ def run_hybrid_on_pulser_output(
         E_pulser_in_qmc=float(pulser_out["E_pulser_in_qmc"]),
         seed=seed,
         n_roundings=n_roundings,
+        enable_animations=enable_animations,
+        n_workers=n_workers,
+        on_rounding_progress=on_rounding_progress,
     )

@@ -1,15 +1,39 @@
-import { Maximize2, MousePointer2, Rotate3D, ZoomIn } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Maximize2, MousePointer2, PlayCircle, Rotate3D, ZoomIn } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 import { usePipelineStore } from "../stores/pipelineStore";
-import type { Edge, GraphResponse, Position } from "../types";
+import type { Edge, GraphResponse, HpcPhaseUpdate, Position } from "../types";
+
+const REPLAY_DURATION_MS = 3500;
+const MAGNETIZATION_COLOR_LOW = new THREE.Color(0xff7a45); // spin -1 / partition 1
+const MAGNETIZATION_COLOR_NEUTRAL = new THREE.Color(0x8b8f97); // spin ~0, indecis
+const MAGNETIZATION_COLOR_HIGH = new THREE.Color(0x2fd6c8); // spin +1 / partition 0
+const CUT_COLOR_PARTITION_0 = new THREE.Color(0x2fd6c8);
+const CUT_COLOR_PARTITION_1 = new THREE.Color(0xff7a45);
+const EDGE_COLOR_DEFAULT = new THREE.Color(0x6ee7cf);
+const EDGE_COLOR_CUT = new THREE.Color(0xffe066); // arete "coupee" (inter-groupe)
 
 export function GraphCanvas() {
   const graph = usePipelineStore((state) => state.graph);
+  const hpcJob = usePipelineStore((state) => state.hpcJob);
   const mountRef = useRef<HTMLDivElement | null>(null);
   const [rendererError, setRendererError] = useState<string | null>(null);
+  const nodeMaterialsRef = useRef<Map<number, THREE.MeshStandardMaterial>>(new Map());
+  const edgeMaterialsRef = useRef<Map<string, { line: THREE.LineBasicMaterial; bead: THREE.MeshBasicMaterial }>>(
+    new Map(),
+  );
+  const renderRef = useRef<() => void>(() => {});
+
+  const pulserPhase: HpcPhaseUpdate | undefined = useMemo(
+    () => hpcJob?.progress?.phases.find((phase) => phase.phase === "pulser"),
+    [hpcJob?.progress?.phases],
+  );
+  const magnetizationSeries = pulserPhase?.magnetization_series ?? null;
+  const cutAssignment = (hpcJob?.result?.cut_assignment as number[] | undefined) ?? null;
+  const [replayToken, setReplayToken] = useState(0);
+  const [isReplaying, setIsReplaying] = useState(false);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -73,8 +97,10 @@ export function GraphCanvas() {
     halo.position.z = -1.32;
     scene.add(halo);
 
+    nodeMaterialsRef.current.clear();
+    edgeMaterialsRef.current.clear();
     if (graph) {
-      buildGraphScene(graphGroup, graph);
+      buildGraphScene(graphGroup, graph, nodeMaterialsRef.current, edgeMaterialsRef.current);
     } else {
       buildEmptyScene(graphGroup);
     }
@@ -83,6 +109,7 @@ export function GraphCanvas() {
     const render = () => {
       renderer.render(scene, camera);
     };
+    renderRef.current = render;
 
     const resize = () => {
       const { width, height } = mount.getBoundingClientRect();
@@ -107,6 +134,9 @@ export function GraphCanvas() {
       controls.removeEventListener("change", render);
       controls.dispose();
       mount.removeChild(renderer.domElement);
+      renderRef.current = () => {};
+      nodeMaterialsRef.current.clear();
+      edgeMaterialsRef.current.clear();
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh || object instanceof THREE.Line || object instanceof THREE.Sprite) {
           object.geometry?.dispose();
@@ -120,19 +150,93 @@ export function GraphCanvas() {
     };
   }, [graph]);
 
+  useEffect(() => {
+    if (!magnetizationSeries || magnetizationSeries.times.length === 0) {
+      return undefined;
+    }
+
+    const { times, magnetization } = magnetizationSeries;
+    const totalTime = times[times.length - 1] - times[0] || 1;
+    const startedAt = performance.now();
+    let frameId: number;
+    setIsReplaying(true);
+
+    const tick = () => {
+      const elapsedFraction = Math.min(1, (performance.now() - startedAt) / REPLAY_DURATION_MS);
+      const targetTime = times[0] + elapsedFraction * totalTime;
+
+      let frameIndex = 0;
+      while (frameIndex < times.length - 1 && times[frameIndex + 1] <= targetTime) {
+        frameIndex += 1;
+      }
+
+      const frame = magnetization[frameIndex];
+      if (frame) {
+        for (const [nodeId, material] of nodeMaterialsRef.current.entries()) {
+          const sz = frame[nodeId];
+          if (sz === undefined) {
+            continue;
+          }
+          const color =
+            sz >= 0
+              ? MAGNETIZATION_COLOR_NEUTRAL.clone().lerp(MAGNETIZATION_COLOR_HIGH, sz)
+              : MAGNETIZATION_COLOR_NEUTRAL.clone().lerp(MAGNETIZATION_COLOR_LOW, -sz);
+          material.color.copy(color);
+          material.emissive.copy(color).multiplyScalar(0.3);
+        }
+        renderRef.current();
+      }
+
+      if (elapsedFraction < 1) {
+        frameId = requestAnimationFrame(tick);
+      } else {
+        setIsReplaying(false);
+        if (cutAssignment) {
+          applyCutAssignmentColors(nodeMaterialsRef.current, edgeMaterialsRef.current, cutAssignment);
+          renderRef.current();
+        }
+      }
+    };
+
+    frameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameId);
+  }, [magnetizationSeries, cutAssignment, replayToken]);
+
+  useEffect(() => {
+    if (magnetizationSeries || !cutAssignment) {
+      // Si une animation de replay existe, c'est elle qui applique la
+      // couleur finale (cf. effet ci-dessus) une fois terminée.
+      return;
+    }
+    applyCutAssignmentColors(nodeMaterialsRef.current, edgeMaterialsRef.current, cutAssignment);
+    renderRef.current();
+  }, [cutAssignment, magnetizationSeries]);
+
   return (
-    <section className="relative h-[620px] min-h-[620px] overflow-hidden rounded-md border border-border bg-background shadow-panel">
-      <div className="absolute left-5 top-5 z-10">
+    <section className="relative h-[380px] min-h-[380px] overflow-hidden rounded-md border border-border bg-background shadow-panel sm:h-[620px] sm:min-h-[620px]">
+      <div className="absolute left-3 top-3 z-10 sm:left-5 sm:top-5">
         <p className="text-xs font-medium uppercase text-foreground/50">3D graph canvas</p>
-        <h2 className="text-2xl font-semibold">{graph ? `${graph.family} / ${graph.n_nodes} nodes` : "Generate a graph"}</h2>
+        <h2 className="text-lg font-semibold sm:text-2xl">{graph ? `${graph.family} / ${graph.n_nodes} nodes` : "Generate a graph"}</h2>
       </div>
 
-      <div className="absolute right-5 top-5 z-10 grid grid-cols-4 gap-2">
+      <div className="absolute right-3 top-3 z-10 grid grid-cols-2 gap-2 sm:right-5 sm:top-5 sm:grid-cols-4">
         <ControlBadge icon={<Rotate3D size={14} />} label="Drag" />
         <ControlBadge icon={<ZoomIn size={14} />} label="Zoom" />
         <ControlBadge icon={<MousePointer2 size={14} />} label="Pan" />
         <ControlBadge icon={<Maximize2 size={14} />} label="Orbit" />
       </div>
+
+      {magnetizationSeries ? (
+        <button
+          type="button"
+          onClick={() => setReplayToken((token) => token + 1)}
+          disabled={isReplaying}
+          className="absolute bottom-3 left-3 z-10 flex items-center gap-2 rounded-md border border-primary/60 bg-background/80 px-3 py-2 text-xs font-semibold text-primary backdrop-blur transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50 sm:bottom-5 sm:left-5"
+        >
+          <PlayCircle size={14} />
+          {isReplaying ? "Replaying…" : "Replay magnetization"}
+        </button>
+      ) : null}
 
       <div ref={mountRef} className="h-full w-full" />
       {rendererError ? (
@@ -147,7 +251,41 @@ export function GraphCanvas() {
   );
 }
 
-function buildGraphScene(group: THREE.Group, graph: GraphResponse) {
+function applyCutAssignmentColors(
+  nodeMaterials: Map<number, THREE.MeshStandardMaterial>,
+  edgeMaterials: Map<string, { line: THREE.LineBasicMaterial; bead: THREE.MeshBasicMaterial }>,
+  cutAssignment: number[],
+) {
+  for (const [nodeId, material] of nodeMaterials.entries()) {
+    const partition = cutAssignment[nodeId];
+    if (partition === undefined) {
+      continue;
+    }
+    const color = partition === 0 ? CUT_COLOR_PARTITION_0 : CUT_COLOR_PARTITION_1;
+    material.color.copy(color);
+    material.emissive.copy(color).multiplyScalar(0.35);
+  }
+
+  for (const [key, { line, bead }] of edgeMaterials.entries()) {
+    const [i, j] = key.split("-").map(Number);
+    const partitionI = cutAssignment[i];
+    const partitionJ = cutAssignment[j];
+    if (partitionI === undefined || partitionJ === undefined || partitionI === partitionJ) {
+      // Arete intra-groupe (non coupee) : on garde sa couleur/opacite d'origine.
+      continue;
+    }
+    line.color.copy(EDGE_COLOR_CUT);
+    bead.color.copy(EDGE_COLOR_CUT);
+    line.opacity = Math.min(0.95, line.opacity + 0.25);
+  }
+}
+
+function buildGraphScene(
+  group: THREE.Group,
+  graph: GraphResponse,
+  nodeMaterials: Map<number, THREE.MeshStandardMaterial>,
+  edgeMaterials: Map<string, { line: THREE.LineBasicMaterial; bead: THREE.MeshBasicMaterial }>,
+) {
   const positions = normalizedPositions(graph);
   const degree = degreeMap(graph.edges);
 
@@ -157,7 +295,9 @@ function buildGraphScene(group: THREE.Group, graph: GraphResponse) {
     if (!source || !target) {
       continue;
     }
-    group.add(createEdge(source, target, edge.w));
+    const { group: edgeGroup, line, bead } = createEdge(source, target, edge.w);
+    group.add(edgeGroup);
+    edgeMaterials.set(`${edge.i}-${edge.j}`, { line, bead });
   }
 
   for (const position of graph.positions) {
@@ -169,6 +309,7 @@ function buildGraphScene(group: THREE.Group, graph: GraphResponse) {
     node.userData.kind = "node";
     node.userData.phase = position.id * 0.8;
     group.add(node);
+    nodeMaterials.set(position.id, node.material as THREE.MeshStandardMaterial);
 
     const label = createLabel(String(position.id));
     label.position.copy(point).add(new THREE.Vector3(0, 0, 0.38 + (degree.get(position.id) ?? 0) * 0.01));
@@ -259,23 +400,21 @@ function createNode(position: THREE.Vector3, id: number) {
 
 function createEdge(source: THREE.Vector3, target: THREE.Vector3, weight: number) {
   const geometry = new THREE.BufferGeometry().setFromPoints([source, target]);
-  const material = new THREE.LineBasicMaterial({
-    color: 0x6ee7cf,
+  const lineMaterial = new THREE.LineBasicMaterial({
+    color: EDGE_COLOR_DEFAULT,
     transparent: true,
     opacity: Math.min(0.92, 0.28 + weight / 3.5),
   });
-  const line = new THREE.Line(geometry, material);
+  const line = new THREE.Line(geometry, lineMaterial);
 
   const midpoint = source.clone().add(target).multiplyScalar(0.5);
-  const bead = new THREE.Mesh(
-    new THREE.SphereGeometry(0.035 + Math.min(weight, 3) * 0.012, 18, 18),
-    new THREE.MeshBasicMaterial({ color: 0xc8fff3, transparent: true, opacity: 0.65 }),
-  );
+  const beadMaterial = new THREE.MeshBasicMaterial({ color: 0xc8fff3, transparent: true, opacity: 0.65 });
+  const bead = new THREE.Mesh(new THREE.SphereGeometry(0.035 + Math.min(weight, 3) * 0.012, 18, 18), beadMaterial);
   bead.position.copy(midpoint);
 
   const edgeGroup = new THREE.Group();
   edgeGroup.add(line, bead);
-  return edgeGroup;
+  return { group: edgeGroup, line: lineMaterial, bead: beadMaterial };
 }
 
 function createLabel(text: string) {
