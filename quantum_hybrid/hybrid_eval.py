@@ -20,10 +20,34 @@ from .hybrid_rounding import random_hyperplane_rounding
 from .hybrid_sdp import spectral_sdp_relaxation
 
 
-def evaluate_product_state_in_qmc(n, target_edges, rho_product):
+def prepare_qmc_ground_state(n, target_edges):
+    """
+    Partie fixe (indépendante du candidat évalué) d'evaluate_product_state_in_qmc :
+    H_qmc et sa diagonalisation exacte (coût exponentiel en n) ne dépendent que
+    du graphe, pas de l'état produit évalué. À calculer une seule fois et
+    réutiliser pour chaque candidat (via h_qmc_out=...), plutôt que de la
+    refaire (eigh sur une matrice 2^n x 2^n) à chaque appel.
+    """
     H_qmc = build_qmc_hamiltonian(n, target_edges)
     evals, _ = np.linalg.eigh(H_qmc)
     E0_qmc = float(np.min(evals))
+    return {"H_qmc": H_qmc, "E0_qmc": E0_qmc}
+
+
+def evaluate_product_state_in_qmc(n, target_edges=None, rho_product=None, h_qmc_out=None):
+    """
+    h_qmc_out, si fourni, doit être le résultat de prepare_qmc_ground_state
+    pour ce même (n, target_edges) : évite de refaire H_qmc + sa
+    diagonalisation exacte à chaque appel quand on évalue plusieurs
+    candidats sur le même graphe.
+    """
+    if h_qmc_out is None:
+        if target_edges is None:
+            raise ValueError("evaluate_product_state_in_qmc requiert target_edges ou h_qmc_out.")
+        h_qmc_out = prepare_qmc_ground_state(n=n, target_edges=target_edges)
+
+    H_qmc = h_qmc_out["H_qmc"]
+    E0_qmc = h_qmc_out["E0_qmc"]
 
     E_product = float(np.real(np.trace(rho_product @ H_qmc)))
     ratio_product = E_product / E0_qmc if abs(E0_qmc) > 1e-12 else np.nan
@@ -39,14 +63,18 @@ def evaluate_multiple_product_states_in_qmc(n, target_edges, candidates):
     """
     Evalue plusieurs etats produits et garde le meilleur selon le ratio.
     """
+    # H_qmc et sa diagonalisation exacte ne dépendent que du graphe : on les
+    # calcule une seule fois pour tous les candidats plutôt qu'à chaque tour.
+    h_qmc_out = prepare_qmc_ground_state(n=n, target_edges=target_edges)
+
     evaluated = []
     best = None
 
     for candidate in candidates:
         eval_out = evaluate_product_state_in_qmc(
             n=n,
-            target_edges=target_edges,
             rho_product=candidate["rho_product"],
+            h_qmc_out=h_qmc_out,
         )
         row = {
             **candidate,

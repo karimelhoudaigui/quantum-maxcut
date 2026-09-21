@@ -17,6 +17,7 @@ from .hybrid_rounding import (
 from .hybrid_eval import (
     evaluate_product_state_in_qmc,
     evaluate_multiple_product_states_in_qmc,
+    prepare_qmc_ground_state,
     choose_best_hybrid_result,
 )
 
