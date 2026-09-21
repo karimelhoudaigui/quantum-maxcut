@@ -115,6 +115,8 @@ def evaluate_fixed_hybrid_sequence_on_graph(
     tol=1e-5,
     enable_animations=False,
     on_phase_complete=None,
+    n_workers=None,
+    on_rounding_progress=None,
 ):
     """
     on_phase_complete, si fourni, est appelé après chaque phase avec
@@ -122,6 +124,14 @@ def evaluate_fixed_hybrid_sequence_on_graph(
     phase si enable_animations}) — permet à l'appelant (ex. run_job.py sur
     le worker) de streamer une progression pendant que le calcul avance,
     sans attendre la fin des 4 phases.
+
+    n_workers : nombre de processus pour paralléliser la boucle des
+    n_roundings essais de rounding (cf. run_hybrid_postprocessing). None ->
+    un par cœur disponible (default_rounding_workers()).
+
+    on_rounding_progress, si fourni, est appelé (done, total) après chaque
+    essai de rounding terminé — sous-progression à l'intérieur de la phase
+    "rounding" elle-même, streamée en plus des 4/5 notify() par phase.
     """
     def notify(phase_name, extra=None):
         if on_phase_complete is not None:
@@ -169,6 +179,8 @@ def evaluate_fixed_hybrid_sequence_on_graph(
         seed=seed,
         n_roundings=n_roundings,
         enable_animations=enable_animations,
+        n_workers=n_workers,
+        on_rounding_progress=on_rounding_progress,
     )
     notify("sdp", {"duration_seconds": float(hybrid_out["sdp_duration_seconds"])})
     notify("rounding", {
