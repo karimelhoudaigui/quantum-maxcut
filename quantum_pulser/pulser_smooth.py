@@ -85,12 +85,20 @@ def evaluate_smooth_pulser_final_state(
     scale=15.5,
     enable_animations=False,
 ):
+    # Chronométrage fin pour identifier ce qui domine réellement le temps de
+    # la phase "Pulser" côté UI (ground_state — np.linalg.eigh, dans notre
+    # code — vs run_pulser_sequence, la simulation qutip elle-même, dans la
+    # lib pulser_simulation) avant de choisir où agir pour l'accélérer.
+    t_ground_state_qmc_start = time.perf_counter()
     H_qmc = build_qmc_hamiltonian(n, target_edges)
     E0_qmc, psi_qmc = ground_state(H_qmc)
+    ground_state_qmc_duration_seconds = time.perf_counter() - t_ground_state_qmc_start
 
+    t_ground_state_r_start = time.perf_counter()
     couplings = couplings_from_positions(positions, c3=1.0)
     H_r = build_xy_hamiltonian(n, couplings)
     E0_r, psi_r = ground_state(H_r)
+    ground_state_r_duration_seconds = time.perf_counter() - t_ground_state_r_start
 
     seq = build_xy_smooth_sequence(
         positions=positions,
@@ -141,6 +149,8 @@ def evaluate_smooth_pulser_final_state(
         "ratio_pulser": ratio_pulser,
         "overlap_proxy": overlap_proxy,
         "duration_seconds": duration_seconds,
+        "ground_state_qmc_duration_seconds": ground_state_qmc_duration_seconds,
+        "ground_state_r_duration_seconds": ground_state_r_duration_seconds,
         "magnetization_series": magnetization_series,
     }
 

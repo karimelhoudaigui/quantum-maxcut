@@ -166,6 +166,11 @@ def evaluate_fixed_hybrid_sequence_on_graph(
     )
     notify("pulser", {
         "duration_seconds": float(pulser_out["duration_seconds"]),
+        # Détail pour diagnostiquer ce qui domine dans la phase "pulser" :
+        # ground_state (np.linalg.eigh, notre code) vs run_pulser_sequence
+        # (simulation qutip elle-même, déjà couverte par duration_seconds).
+        "ground_state_qmc_duration_seconds": float(pulser_out["ground_state_qmc_duration_seconds"]),
+        "ground_state_r_duration_seconds": float(pulser_out["ground_state_r_duration_seconds"]),
         "magnetization_series": pulser_out["magnetization_series"],
     })
 
@@ -215,6 +220,15 @@ def evaluate_fixed_hybrid_sequence_on_graph(
             "pulser": float(pulser_out["duration_seconds"]),
             "sdp": float(hybrid_out["sdp_duration_seconds"]),
             "rounding": float(hybrid_out["rounding_duration_seconds"]),
+        },
+        # Détail du temps passé DANS la phase "pulser" : ground_state (notre
+        # code, np.linalg.eigh) vs run_pulser_sequence (la simulation qutip
+        # elle-même, = phase_durations_seconds["pulser"] moins ces deux
+        # durées) — pour savoir où agir en priorité pour l'accélérer.
+        "pulser_breakdown_seconds": {
+            "ground_state_qmc": float(pulser_out["ground_state_qmc_duration_seconds"]),
+            "ground_state_r": float(pulser_out["ground_state_r_duration_seconds"]),
+            "run_pulser_sequence": float(pulser_out["duration_seconds"]),
         },
         "magnetization_series": pulser_out["magnetization_series"],
         "rounding_trials_series": hybrid_out["rounding_trials_series"],
