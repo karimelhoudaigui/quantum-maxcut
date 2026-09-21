@@ -128,19 +128,32 @@ function hpcStepsFromProgress(
   const completedStepIds = new Set(phases.map((phase) => HPC_PHASE_TO_STEP[phase.phase]));
   const jobFailed = jobStatus === "error" || jobStatus === "cancelled";
   const jobRunning = jobStatus === "running";
+  const jobDone = jobStatus === "done";
+
+  // Filet de sécurité : si le job est terminé avec succès, le résultat final
+  // contient les durées de toutes les phases même quand le flux de progression
+  // (streamé pendant l'exécution) a raté les toutes dernières mises à jour
+  // (ex. sdp/rounding relayées trop tard côté worker HPC).
+  const phaseDurations = result?.["phase_durations_seconds"] as Record<string, unknown> | undefined;
+  const rawDoneKeys = jobDone && phaseDurations && typeof phaseDurations === "object" ? Object.keys(phaseDurations) : [];
+  const finalPhaseIds = new Set(
+    rawDoneKeys.map((key) => (key === "positions" ? "geometry" : key) as PipelineStep["id"]),
+  );
 
   return emptySteps.map((step, index) => {
-    if (completedStepIds.has(step.id)) {
+    if (completedStepIds.has(step.id) || finalPhaseIds.has(step.id)) {
       const phase = phases.find((p) => HPC_PHASE_TO_STEP[p.phase] === step.id);
       const metricValue = result?.[STEP_RESULT_METRIC_KEY[step.id]];
+      const durationKey = step.id === "geometry" ? "positions" : step.id;
+      const fallbackDuration = !phase && phaseDurations ? phaseDurations[durationKey] : undefined;
       return {
         ...step,
         status: "completed",
         metric_value: typeof metricValue === "number" || typeof metricValue === "string" ? metricValue : null,
-        duration_seconds: phase?.duration_seconds,
+        duration_seconds: phase?.duration_seconds ?? (typeof fallbackDuration === "number" ? fallbackDuration : undefined),
       };
     }
-    const previousCompleted = index === 0 || completedStepIds.has(emptySteps[index - 1].id);
+    const previousCompleted = index === 0 || completedStepIds.has(emptySteps[index - 1].id) || finalPhaseIds.has(emptySteps[index - 1].id);
     if (jobFailed) {
       return { ...step, status: previousCompleted ? "failed" : "pending" };
     }
