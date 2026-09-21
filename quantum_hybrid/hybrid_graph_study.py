@@ -14,17 +14,25 @@ import time
 
 os.environ.setdefault("MPLCONFIGDIR", "/tmp")
 
-import matplotlib
-
-matplotlib.use("Agg")
-
-import matplotlib.pyplot as plt
 import numpy as np
 
 from quantum_optmization import optimize_atom_positions
 from quantum_pulser import compute_edge_correlators, evaluate_smooth_pulser_final_state
 
 from .hybrid_core import run_hybrid_on_pulser_output
+
+
+def _pyplot():
+    """
+    Import paresseux de pyplot : les jobs de calcul (run_job.py) n'en ont pas
+    besoin, et son import est couteux sur un filesystem reseau.
+    """
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    return plt
 
 
 def _study_n_label(results=None, summary=None, scaling_summary=None):
@@ -358,6 +366,7 @@ def plot_hybrid_graph_study(results, summary=None, save_path=None, show=True):
     Plot simple comparant ratio Pulser, meilleur ratio produit, et ratio hybride
     pour chaque graphe.
     """
+    plt = _pyplot()
     graph_ids = [int(r["graph_id"]) for r in results]
     ratio_pulser = [float(r["ratio_pulser"]) for r in results]
     ratio_product = [float(r["ratio_product_best"]) for r in results]
@@ -405,6 +414,7 @@ def plot_hybrid_vs_pulser_scatter(results, save_path=None, show=True):
     """
     Scatter plot : x = ratio Pulser, y = ratio Hybrid, avec diagonale y = x.
     """
+    plt = _pyplot()
     ratio_pulser = np.array([float(r["ratio_pulser"]) for r in results], dtype=float)
     ratio_hybrid = np.array([float(r["ratio_hybrid"]) for r in results], dtype=float)
 
@@ -435,6 +445,7 @@ def plot_hybrid_distribution(results, save_path=None, show=True):
     """
     Histogrammes comparant les distributions des ratios Pulser et Hybrid.
     """
+    plt = _pyplot()
     ratio_pulser = np.array([float(r["ratio_pulser"]) for r in results], dtype=float)
     ratio_hybrid = np.array([float(r["ratio_hybrid"]) for r in results], dtype=float)
 
@@ -466,6 +477,7 @@ def plot_hybrid_scaling_summary(scaling_summary, save_path=None, show=True):
     """
     Figure globale des moyennes en fonction de la taille d'échantillon.
     """
+    plt = _pyplot()
     x = [int(row["n_graphs"]) for row in scaling_summary]
     y_pulser = [float(row["ratio_pulser_mean"]) for row in scaling_summary]
     y_product = [float(row["ratio_product_mean"]) for row in scaling_summary]
