@@ -76,6 +76,7 @@ export type HpcJobStatus =
   | "waiting_for_worker"
   | "dispatched"
   | "submitting"
+  | "queued_slurm"
   | "running"
   | "cancelling"
   | "done"

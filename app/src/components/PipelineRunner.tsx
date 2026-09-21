@@ -5,6 +5,10 @@ import { usePipelineRunner } from "../hooks/usePipeline";
 import { usePipelineStore } from "../stores/pipelineStore";
 import type { HpcPhaseUpdate, HpcRoundingProgress, PipelineStep } from "../types";
 
+const HPC_STATUS_LABELS: Partial<Record<string, string>> = {
+  queued_slurm: "queued on SLURM",
+};
+
 const HPC_PHASE_TO_STEP: Record<HpcPhaseUpdate["phase"], PipelineStep["id"]> = {
   setup: "setup",
   positions: "geometry",
@@ -102,7 +106,7 @@ export function PipelineRunner() {
           {hpcJob ? (
             <div className="mt-2 flex items-center justify-between gap-3">
               <p className="text-foreground/70">
-                Status: <span className="font-medium text-foreground">{hpcJob.status}</span>
+                Status: <span className="font-medium text-foreground">{HPC_STATUS_LABELS[hpcJob.status] ?? hpcJob.status}</span>
                 {hpcJob.slurm_job_id ? ` · SLURM ${hpcJob.slurm_job_id}` : ""}
                 {hpcJob.resources
                   ? ` · ${hpcJob.resources.nodes} node${hpcJob.resources.nodes > 1 ? "s" : ""} · ${hpcJob.resources.cpus_per_task} cores`
