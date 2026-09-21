@@ -111,7 +111,11 @@ def run_hybrid_postprocessing(
         choose_best_hybrid_result,
         evaluate_multiple_product_states_in_qmc,
     )
-    from .hybrid_rounding import random_hyperplane_rounding, round_sdp_to_product_state
+    from .hybrid_rounding import (
+        prepare_sdp_rounding_vectors,
+        random_hyperplane_rounding,
+        round_sdp_to_product_state,
+    )
     from .hybrid_sdp import solve_proxy_sdp_from_correlators
 
     t_sdp_start = time.perf_counter()
@@ -124,10 +128,16 @@ def run_hybrid_postprocessing(
     Delta = sdp_out["Delta"]
 
     t_rounding_start = time.perf_counter()
+    # La factorisation spectrale de Delta (prepare_sdp_rounding_vectors) est
+    # indépendante du seed : on ne la calcule qu'une fois et on la réutilise
+    # pour chacun des n_roundings tirages aléatoires, au lieu de la refaire
+    # (coûteuse décomposition eigh) à chaque tour de boucle.
+    vec_out = prepare_sdp_rounding_vectors(n=n, Delta=Delta)
+
     rounding_candidates = []
     for trial in range(int(n_roundings)):
         trial_seed = int(seed) + trial
-        rounding_out = round_sdp_to_product_state(n=n, Delta=Delta, seed=trial_seed)
+        rounding_out = round_sdp_to_product_state(n=n, seed=trial_seed, vec_out=vec_out)
         rounding_candidates.append({
             **rounding_out,
             "seed": trial_seed,
