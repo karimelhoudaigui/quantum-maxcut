@@ -54,7 +54,7 @@ export type StepStatus = "pending" | "running" | "completed" | "failed";
 export type JobStatus = "queued" | "running" | "completed" | "failed";
 
 export interface PipelineStep {
-  id: "geometry" | "pulser" | "sdp" | "rounding";
+  id: "setup" | "geometry" | "pulser" | "sdp" | "rounding";
   label: string;
   status: StepStatus;
   metric_label: string | null;
@@ -82,7 +82,7 @@ export type HpcJobStatus =
   | "cancelled";
 
 export interface HpcPhaseUpdate {
-  phase: "positions" | "pulser" | "sdp" | "rounding";
+  phase: "setup" | "positions" | "pulser" | "sdp" | "rounding";
   completed_at: number;
   duration_seconds: number;
   magnetization_series?: { times: number[]; magnetization: number[][] } | null;
