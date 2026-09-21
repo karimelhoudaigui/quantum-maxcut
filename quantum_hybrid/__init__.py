@@ -10,6 +10,7 @@ from .hybrid_sdp import (
 )
 
 from .hybrid_rounding import (
+    prepare_sdp_rounding_vectors,
     round_sdp_to_product_state,
 )
 

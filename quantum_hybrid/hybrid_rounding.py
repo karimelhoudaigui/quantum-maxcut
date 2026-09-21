@@ -118,17 +118,37 @@ def build_product_state_from_bloch_vectors(bloch_vectors):
     return rho_product
 
 
-def round_sdp_to_product_state(n, Delta, seed=1234):
+def prepare_sdp_rounding_vectors(n, Delta):
+    """
+    Partie déterministe (indépendante du seed) du rounding : factorisation de
+    Delta puis extraction des vecteurs x_i. À calculer une seule fois pour un
+    Delta donné et réutiliser pour chaque tirage aléatoire de
+    round_sdp_to_product_state (via vec_out=...), plutôt que de la refaire à
+    chaque essai — c'est la même factorisation spectrale à chaque fois.
+    """
+    Delta_factor = factorize_pseudo_moment_matrix(Delta)
+    return build_proxy_rounding_vectors(n=n, Delta_factor=Delta_factor)
+
+
+def round_sdp_to_product_state(n, Delta=None, seed=1234, vec_out=None):
     """
     Rounding plus fidele a l'article :
-    - factorisation de Delta*
+    - factorisation de Delta* (sautée si vec_out est fourni, cf.
+      prepare_sdp_rounding_vectors)
     - extraction de u_i^X et u_i^Y
     - construction des vecteurs concaténés x_i
     - projection gaussienne aleatoire vers R^3
     - construction de rho_p
+
+    vec_out, si fourni, doit être le résultat de prepare_sdp_rounding_vectors
+    pour ce même Delta : évite de refactoriser Delta à chaque appel quand on
+    tire plusieurs roundings (seeds différents) sur le même Delta.
     """
-    Delta_factor = factorize_pseudo_moment_matrix(Delta)
-    vec_out = build_proxy_rounding_vectors(n=n, Delta_factor=Delta_factor)
+    if vec_out is None:
+        if Delta is None:
+            raise ValueError("round_sdp_to_product_state requiert Delta ou vec_out.")
+        vec_out = prepare_sdp_rounding_vectors(n=n, Delta=Delta)
+
     bloch_vectors = bloch_vectors_from_x_vectors(vec_out["x_vectors"], seed=seed)
     rho_product = build_product_state_from_bloch_vectors(bloch_vectors)
 
@@ -138,7 +158,6 @@ def round_sdp_to_product_state(n, Delta, seed=1234):
         "u_x": vec_out["u_x"],
         "u_y": vec_out["u_y"],
         "x_vectors": vec_out["x_vectors"],
-        "Delta_factor": Delta_factor,
     }
 
 
