@@ -70,6 +70,16 @@ export function usePipelineRunner() {
     refetchInterval: 3000,
   });
 
+  const hpcStop = useMutation({
+    mutationFn: () => {
+      if (!hpcJob) {
+        throw new Error("No HPC job to stop.");
+      }
+      return cancelHpcJob(hpcJob.job_id);
+    },
+    onSuccess: setHpcJob,
+  });
+
   useEffect(() => {
     if (status.data && status.data.job_id === job?.job_id) {
       setJob(status.data);
@@ -82,5 +92,5 @@ export function usePipelineRunner() {
     }
   }, [hpcJob?.job_id, hpcStatus.data, setHpcJob]);
 
-  return { run, status, hpcRun, hpcStatus };
+  return { run, status, hpcRun, hpcStatus, hpcStop };
 }

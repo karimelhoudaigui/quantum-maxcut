@@ -1,9 +1,9 @@
-import { Activity, Check, Cloud, Loader2, X } from "lucide-react";
+import { Activity, Check, Cloud, Loader2, Square, X } from "lucide-react";
 import { useMemo } from "react";
 
 import { usePipelineRunner } from "../hooks/usePipeline";
 import { usePipelineStore } from "../stores/pipelineStore";
-import type { HpcPhaseUpdate, PipelineStep } from "../types";
+import type { HpcPhaseUpdate, HpcRoundingProgress, PipelineStep } from "../types";
 
 const HPC_PHASE_TO_STEP: Record<HpcPhaseUpdate["phase"], PipelineStep["id"]> = {
   setup: "setup",
@@ -17,12 +17,18 @@ export function PipelineRunner() {
   const graph = usePipelineStore((state) => state.graph);
   const job = usePipelineStore((state) => state.job);
   const hpcJob = usePipelineStore((state) => state.hpcJob);
-  const { run, hpcRun } = usePipelineRunner();
+  const { run, hpcRun, hpcStop } = usePipelineRunner();
   const hpcActive = hpcJob && !["done", "error", "cancelled"].includes(hpcJob.status);
+  const hpcStoppable = hpcActive && hpcJob.status !== "cancelling";
 
   const steps = useMemo(() => {
     if (hpcJob) {
-      return hpcStepsFromProgress(hpcJob.progress?.phases ?? [], hpcJob.status, hpcJob.result);
+      return hpcStepsFromProgress(
+        hpcJob.progress?.phases ?? [],
+        hpcJob.status,
+        hpcJob.result,
+        hpcJob.progress?.current,
+      );
     }
     return job?.steps ?? [];
   }, [hpcJob, job?.steps]);
@@ -43,16 +49,30 @@ export function PipelineRunner() {
           {run.isPending || job?.status === "running" ? <Loader2 className="animate-spin" size={16} /> : <Activity size={16} />}
           Run
         </button>
-        <button
-          type="button"
-          disabled={!graph || hpcRun.isPending}
-          onClick={() => hpcRun.mutate()}
-          className="flex items-center gap-2 rounded-md border border-primary/60 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-45"
-          title={hpcActive ? "Cancel the running HPC job and submit this configuration instead" : "Submit this configuration to hpc-bridge"}
-        >
-          {hpcRun.isPending || hpcActive ? <Loader2 className="animate-spin" size={16} /> : <Cloud size={16} />}
-          {hpcActive ? "Restart HPC" : "Run HPC"}
-        </button>
+        <div className="flex items-stretch overflow-hidden rounded-md border border-primary/60">
+          <button
+            type="button"
+            disabled={!graph || hpcRun.isPending}
+            onClick={() => hpcRun.mutate()}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-45"
+            title={hpcActive ? "Cancel the running HPC job and submit this configuration instead" : "Submit this configuration to hpc-bridge"}
+          >
+            {hpcRun.isPending || hpcActive ? <Loader2 className="animate-spin" size={16} /> : <Cloud size={16} />}
+            {hpcActive ? "Restart HPC" : "Run HPC"}
+          </button>
+          {hpcStoppable ? (
+            <button
+              type="button"
+              disabled={hpcStop.isPending}
+              onClick={() => hpcStop.mutate()}
+              className="flex items-center gap-2 border-l border-primary/60 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-45"
+              title="Stop the running HPC job without submitting a new one"
+            >
+              {hpcStop.isPending ? <Loader2 className="animate-spin" size={16} /> : <Square size={16} />}
+              Stop
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="mb-4 h-2 overflow-hidden rounded-full bg-background">
@@ -78,11 +98,15 @@ export function PipelineRunner() {
             <span className="font-mono text-xs text-foreground/60">{hpcJob?.job_id ?? "not submitted"}</span>
           </div>
           {hpcRun.error ? <p className="mt-2 text-red-200">{hpcRun.error.message}</p> : null}
+          {hpcStop.error ? <p className="mt-2 text-red-200">{hpcStop.error.message}</p> : null}
           {hpcJob ? (
             <div className="mt-2 flex items-center justify-between gap-3">
               <p className="text-foreground/70">
                 Status: <span className="font-medium text-foreground">{hpcJob.status}</span>
                 {hpcJob.slurm_job_id ? ` · SLURM ${hpcJob.slurm_job_id}` : ""}
+                {hpcJob.resources
+                  ? ` · ${hpcJob.resources.nodes} node${hpcJob.resources.nodes > 1 ? "s" : ""} · ${hpcJob.resources.cpus_per_task} cores`
+                  : ""}
               </p>
               {hpcJob.result ? <ResultJson result={hpcJob.result} /> : null}
             </div>
@@ -127,6 +151,7 @@ function hpcStepsFromProgress(
   phases: HpcPhaseUpdate[],
   jobStatus: string,
   result: Record<string, unknown> | null | undefined,
+  current?: HpcRoundingProgress | null,
 ): PipelineStep[] {
   const completedStepIds = new Set(phases.map((phase) => HPC_PHASE_TO_STEP[phase.phase]));
   const jobFailed = jobStatus === "error" || jobStatus === "cancelled";
@@ -160,7 +185,19 @@ function hpcStepsFromProgress(
     if (jobFailed) {
       return { ...step, status: previousCompleted ? "failed" : "pending" };
     }
-    return { ...step, status: previousCompleted && jobRunning ? "running" : "pending" };
+    const running = previousCompleted && jobRunning;
+    // La phase rounding parallélise n_roundings essais indépendants sur les
+    // cœurs du job SLURM : tant qu'elle tourne, affiche "fait/total" plutôt
+    // que le libellé/valeur finaux (ratio_hybrid n'existe pas encore).
+    if (running && step.id === "rounding" && current && current.total > 0) {
+      return {
+        ...step,
+        status: "running",
+        metric_label: "Rounding trials",
+        metric_value: `${current.done}/${current.total}`,
+      };
+    }
+    return { ...step, status: running ? "running" : "pending" };
   });
 }
 

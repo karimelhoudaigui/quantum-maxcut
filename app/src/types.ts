@@ -77,6 +77,7 @@ export type HpcJobStatus =
   | "dispatched"
   | "submitting"
   | "running"
+  | "cancelling"
   | "done"
   | "error"
   | "cancelled";
@@ -89,8 +90,20 @@ export interface HpcPhaseUpdate {
   rounding_trials_series?: { seed: number; ratio_product: number }[] | null;
 }
 
+export interface HpcRoundingProgress {
+  phase: "rounding";
+  done: number;
+  total: number;
+}
+
 export interface HpcJobProgress {
   phases: HpcPhaseUpdate[];
+  current?: HpcRoundingProgress | null;
+}
+
+export interface HpcJobResources {
+  cpus_per_task: number;
+  nodes: number;
 }
 
 export interface HpcJob {
@@ -103,6 +116,7 @@ export interface HpcJob {
   created_at?: string;
   finished_at?: string | null;
   progress?: HpcJobProgress | null;
+  resources?: HpcJobResources | null;
 }
 
 export interface FamilyResultRow {
