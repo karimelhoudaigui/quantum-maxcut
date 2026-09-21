@@ -1,4 +1,5 @@
 from .hybrid_core import (
+    default_rounding_workers,
     run_hybrid_postprocessing,
     run_hybrid_on_pulser_output,
 )
