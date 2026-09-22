@@ -1,10 +1,17 @@
 # Build applicatif rapide, utilisé uniquement par le BuildConfig OpenShift
-# quantum-maxcut-frontend : dockerStrategy.from (cf.
-# openshift/quantum-frontend-buildconfig.yaml) remplace le node:20-alpine
-# ci-dessous par quantum-maxcut-frontend-base:latest (node_modules déjà
+# quantum-maxcut-frontend : BASE_IMAGE (build-arg, cf.
+# openshift/quantum-frontend-buildconfig.yaml, dockerStrategy.buildArgs)
+# pointe vers quantum-maxcut-frontend-base:latest (node_modules déjà
 # installés, cf. Dockerfile.base) — on saute donc `npm ci`, l'essentiel du
 # temps de build, pour la grosse majorité des commits qui ne touchent que le
 # code de l'appli, pas les dépendances.
+#
+# ARG explicite plutôt que dockerStrategy.from (dans le YAML du
+# BuildConfig) : dockerStrategy.from est censé remplacer automatiquement le
+# FROM d'un Dockerfile, mais ne l'a pas fait de façon fiable en conditions
+# réelles sur ce Dockerfile multi-stage — comportement OpenShift
+# insuffisamment documenté pour ce cas précis. Un ARG est un mécanisme
+# Docker standard, garanti, indépendant de la version d'OpenShift.
 #
 # ATTENTION : si package.json/package-lock.json changent, reconstruire
 # d'abord quantum-maxcut-frontend-base (oc start-build
@@ -13,11 +20,13 @@
 # rien ici). Le trigger ImageChange du BuildConfig relance automatiquement
 # ce build-ci une fois la base reconstruite.
 #
-# Construit tel quel, hors OpenShift (donc sans le remplacement de FROM), ce
-# Dockerfile échoue : node:20-alpine nu n'a pas node_modules. Pour un build
-# local/CI autonome, utiliser Dockerfile (à la racine de app/), qui fait
-# npm ci lui-même.
-FROM node:20-alpine AS build
+# Construit tel quel (BASE_IMAGE non fourni, donc node:20-alpine nu, sans
+# node_modules), ce Dockerfile échoue : `npm run build` a besoin des
+# dépendances déjà installées par Dockerfile.base. Pour un build local/CI
+# autonome, utiliser Dockerfile (à la racine de app/), qui fait npm ci
+# lui-même.
+ARG BASE_IMAGE=node:20-alpine
+FROM ${BASE_IMAGE} AS build
 
 # cf. Dockerfile pour le détail de ces ARG (identique, non dupliqué ici).
 ARG GIT_COMMIT=""
