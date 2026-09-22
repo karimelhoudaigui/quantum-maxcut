@@ -33,6 +33,15 @@ const quantinaHeroVideoSrc = `${import.meta.env.BASE_URL}media/simulation-stack-
 const quantinaLogoSrc = `${import.meta.env.BASE_URL}media/brand/quantina-logo.png`;
 const maisonDuQuantiquePartnersSrc = `${import.meta.env.BASE_URL}media/brand/maison-du-quantique-partners.png`;
 
+const sectionLinks = [
+  { id: "project", label: "Overview" },
+  { id: "use-cases", label: "Use cases" },
+  { id: "method", label: "Method" },
+  { id: "ecosystem", label: "Ecosystem" },
+  { id: "outputs", label: "Outputs" },
+  { id: "join", label: "Team" },
+];
+
 interface QuantinaPageProps {
   onNavigate: (route: string) => void;
 }
@@ -216,6 +225,7 @@ export function QuantinaPage({ onNavigate }: QuantinaPageProps) {
     <main className="min-h-[100svh] overflow-x-clip bg-quantina text-foreground">
       <QuantinaHeader onNavigate={onNavigate} />
       <HeroSection onNavigate={onNavigate} />
+      <SectionDock />
       <FlowSection />
       <ProjectSection />
       <UseCasesSection />
@@ -225,6 +235,68 @@ export function QuantinaPage({ onNavigate }: QuantinaPageProps) {
       <JoinSection />
     </main>
   );
+}
+
+function SectionDock() {
+  const activeSection = useActiveSection();
+
+  return (
+    <div className="sticky top-[76px] z-40 border-y border-white/10 bg-[#070b11]/92 px-3 py-3 shadow-[0_18px_50px_rgba(0,0,0,0.3)] backdrop-blur-2xl sm:top-[92px] sm:px-8">
+      <nav aria-label="QuantINA sections" className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto">
+        <a href="#top" className="mr-2 flex shrink-0 items-center gap-2 px-2 py-2 text-sm font-semibold text-white">
+          <img alt="" aria-hidden="true" className="h-6 w-6 object-contain" src={quantinaLogoSrc} />
+          <span className="hidden sm:inline">QuantINA</span>
+        </a>
+        {sectionLinks.map((item) => {
+          const active = activeSection === item.id;
+          return (
+            <a
+              key={item.id}
+              href={`#${item.id}`}
+              aria-current={active ? "location" : undefined}
+              className={[
+                "shrink-0 rounded-md px-3 py-2 text-xs font-semibold transition",
+                active ? "bg-primary text-background" : "text-foreground/55 hover:bg-white/[0.06] hover:text-white",
+              ].join(" ")}
+            >
+              {item.label}
+            </a>
+          );
+        })}
+        <a
+          href="#join"
+          className="ml-auto hidden shrink-0 items-center gap-2 rounded-md border border-primary/30 px-3 py-2 text-xs font-semibold text-primary transition hover:bg-primary/10 md:inline-flex"
+        >
+          Start a project
+          <ArrowRight size={14} />
+        </a>
+      </nav>
+    </div>
+  );
+}
+
+function useActiveSection() {
+  const [activeSection, setActiveSection] = useState(sectionLinks[0].id);
+
+  useEffect(() => {
+    const sections = sectionLinks.map(({ id }) => document.getElementById(id)).filter((section): section is HTMLElement => Boolean(section));
+    if (!("IntersectionObserver" in window) || sections.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target.id) setActiveSection(visible.target.id);
+      },
+      { rootMargin: "-20% 0px -65% 0px", threshold: [0, 0.1, 0.4] },
+    );
+
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, []);
+
+  return activeSection;
 }
 
 function QuantinaHeader({ onNavigate }: QuantinaPageProps) {
@@ -680,7 +752,7 @@ function FlowSection() {
 
 function ProjectSection() {
   return (
-    <section id="project" className="px-5 py-20 sm:px-8 lg:px-10">
+    <section id="project" className="scroll-mt-40 px-5 py-20 sm:px-8 lg:px-10">
       <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
         <SectionIntro
           eyebrow="The project"
@@ -699,8 +771,12 @@ function ProjectSection() {
 }
 
 function UseCasesSection() {
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const selected = useCases[selectedIndex];
+  const SelectedIcon = selected.icon;
+
   return (
-    <section id="use-cases" className="bg-[#07100f] px-5 py-20 sm:px-8 lg:px-10">
+    <section id="use-cases" className="scroll-mt-40 bg-[#07100f] px-5 py-20 sm:px-8 lg:px-10">
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
           <SectionIntro
@@ -713,10 +789,59 @@ function UseCasesSection() {
           </div>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-          {useCases.map((useCase) => (
-            <UseCaseCard key={useCase.title} useCase={useCase} />
-          ))}
+        <div className="grid overflow-hidden rounded-lg border border-white/10 bg-[#0b1119]/82 shadow-[0_28px_90px_rgba(0,0,0,0.24)] lg:grid-cols-[0.38fr_0.62fr]">
+          <div className="border-b border-white/10 p-2 lg:border-b-0 lg:border-r">
+            <div className="flex gap-2 overflow-x-auto lg:grid">
+              {useCases.map((useCase, index) => {
+                const Icon = useCase.icon;
+                const active = selectedIndex === index;
+                return (
+                  <button
+                    key={useCase.title}
+                    type="button"
+                    onClick={() => setSelectedIndex(index)}
+                    className={[
+                      "flex min-w-[210px] items-center gap-3 rounded-md border px-4 py-3 text-left transition lg:min-w-0",
+                      active
+                        ? "border-primary/35 bg-primary/10 text-white"
+                        : "border-transparent text-foreground/55 hover:border-white/10 hover:bg-white/[0.04] hover:text-white",
+                    ].join(" ")}
+                  >
+                    <span className={active ? "text-primary" : useCase.accent}>
+                      <Icon size={18} />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-semibold">{useCase.title}</span>
+                      <span className="mt-1 block text-xs opacity-60">{useCase.status}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <article className="relative min-h-[430px] overflow-hidden p-6 sm:p-8 lg:p-10">
+            <div aria-hidden="true" className="absolute right-0 top-0 h-48 w-48 bg-[radial-gradient(circle,rgba(45,212,191,0.12),transparent_68%)]" />
+            <div className="relative z-10 flex h-full flex-col">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-md border border-primary/25 bg-primary/10 text-primary">
+                  <SelectedIcon size={23} />
+                </div>
+                <span className="rounded-md border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
+                  {selected.status}
+                </span>
+              </div>
+              <p className="mt-8 text-xs font-semibold uppercase text-foreground/38">Selected industrial track</p>
+              <h3 className="mt-2 text-3xl font-semibold text-white sm:text-4xl">{selected.title}</h3>
+              <div className="mt-8 grid gap-5 sm:grid-cols-2">
+                <CaseLine label="Industrial problem" value={selected.problem} />
+                <CaseLine label="Research approach" value={selected.approach} />
+              </div>
+              <div className="mt-auto border-t border-white/10 pt-6">
+                <CaseLine label="Potential partners" value={selected.partners} />
+              </div>
+            </div>
+          </article>
         </div>
       </div>
     </section>
@@ -725,7 +850,7 @@ function UseCasesSection() {
 
 function WorkflowSection() {
   return (
-    <section id="method" className="px-5 py-20 sm:px-8 lg:px-10">
+    <section id="method" className="scroll-mt-40 px-5 py-20 sm:px-8 lg:px-10">
       <div className="mx-auto max-w-7xl">
         <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
           <SectionIntro
@@ -761,49 +886,56 @@ function WorkflowSection() {
 
 function EcosystemSection() {
   return (
-    <section id="ecosystem" className="bg-[#f4f7f8] px-5 py-20 text-[#091a2d] sm:px-8 lg:px-10">
+    <section id="ecosystem" className="scroll-mt-40 border-y border-white/10 bg-[#090e16] px-5 py-20 sm:px-8 lg:px-10">
       <div className="mx-auto max-w-7xl">
-        <div className="grid gap-10 border-b border-[#0b2945]/15 pb-12 lg:grid-cols-[1.15fr_0.85fr] lg:items-end">
+        <div className="grid gap-10 border-b border-white/10 pb-12 lg:grid-cols-[1.15fr_0.85fr] lg:items-end">
           <div className="max-w-4xl">
             <div className="mb-6 flex items-center gap-4">
-              <img className="h-14 w-14 object-contain" src={quantinaLogoSrc} alt="QuantINA" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-md border border-primary/25 bg-primary/10 p-1.5 shadow-[0_0_32px_hsl(var(--primary)/0.15)]">
+                <img className="h-full w-full object-contain" src={quantinaLogoSrc} alt="QuantINA" />
+              </div>
               <div>
                 <p className="text-xs font-semibold uppercase text-[#ff4f74]">Led by the Maison du Quantique</p>
-                <p className="mt-1 text-sm font-medium text-[#37506a]">Nouvelle-Aquitaine quantum ecosystem</p>
+                <p className="mt-1 text-sm font-medium text-foreground/55">Nouvelle-Aquitaine quantum ecosystem</p>
               </div>
             </div>
-            <h2 className="max-w-4xl text-4xl font-semibold leading-tight text-[#071b30] sm:text-5xl">
+            <h2 className="max-w-4xl text-4xl font-semibold leading-tight text-white sm:text-5xl">
               QuantINA is carried by a regional network built for research, transfer and execution.
             </h2>
           </div>
-          <p className="max-w-xl text-base leading-8 text-[#486078] lg:justify-self-end">
+          <p className="max-w-xl text-base leading-8 text-foreground/62 lg:justify-self-end">
             The Maison du Quantique brings together universities, national research organisations, laboratories, innovation networks and
             computing infrastructures to turn industrial challenges into rigorous quantum and HPC projects.
           </p>
         </div>
 
-        <div className="grid gap-5 border-b border-[#0b2945]/15 py-8 sm:grid-cols-3">
+        <div className="grid gap-5 border-b border-white/10 py-8 sm:grid-cols-3">
           {[
             ["15", "institutions and research networks"],
             ["1", "regional coordination hub"],
             ["Research → industry", "a shared transfer pathway"],
           ].map(([value, label]) => (
             <div key={label} className="border-l-2 border-[#ff4f74] pl-4">
-              <p className="text-xl font-semibold text-[#071b30]">{value}</p>
-              <p className="mt-1 text-sm text-[#5c7084]">{label}</p>
+              <p className="text-xl font-semibold text-white">{value}</p>
+              <p className="mt-1 text-sm text-foreground/48">{label}</p>
             </div>
           ))}
         </div>
 
         <div className="pt-10">
-          <p className="mb-7 text-xs font-semibold uppercase text-[#5c7084]">The Maison du Quantique partner network</p>
-          <img
-            alt="Maison du Quantique partner institutions"
-            className="mx-auto block h-auto w-full max-w-[1120px] object-contain"
-            decoding="async"
-            loading="lazy"
-            src={maisonDuQuantiquePartnersSrc}
-          />
+          <div className="mb-7 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+            <p className="text-xs font-semibold uppercase text-foreground/45">The Maison du Quantique partner network</p>
+            <p className="text-xs text-foreground/35">Research · innovation · infrastructure · transfer</p>
+          </div>
+          <div className="overflow-hidden rounded-lg border border-white/12 bg-[#f4f7f8] p-4 shadow-[0_30px_100px_rgba(0,0,0,0.32)] sm:p-8">
+            <img
+              alt="Maison du Quantique partner institutions"
+              className="mx-auto block h-auto w-full max-w-[1120px] object-contain"
+              decoding="async"
+              loading="lazy"
+              src={maisonDuQuantiquePartnersSrc}
+            />
+          </div>
         </div>
       </div>
     </section>
@@ -812,7 +944,7 @@ function EcosystemSection() {
 
 function DeliverablesSection() {
   return (
-    <section id="outputs" className="bg-[#07100f] px-5 py-20 sm:px-8 lg:px-10">
+    <section id="outputs" className="scroll-mt-40 bg-[#07100f] px-5 py-20 sm:px-8 lg:px-10">
       <div className="mx-auto max-w-7xl">
         <SectionIntro
           eyebrow="Results and deliverables"
@@ -831,7 +963,7 @@ function DeliverablesSection() {
 
 function JoinSection() {
   return (
-    <section id="join" className="px-5 py-20 sm:px-8 lg:px-10">
+    <section id="join" className="scroll-mt-40 px-5 py-20 sm:px-8 lg:px-10">
       <div className="mx-auto max-w-7xl">
         <div className="grid gap-8 lg:grid-cols-[0.72fr_1.28fr] lg:items-start">
           <SectionIntro
@@ -908,30 +1040,6 @@ function TeamMemberCard({ member }: { member: TeamMember }) {
           <span className="truncate">{member.email}</span>
         </a>
       </div>
-    </article>
-  );
-}
-
-function UseCaseCard({ useCase }: { useCase: UseCase }) {
-  const Icon = useCase.icon;
-  return (
-    <article className="rounded-md border border-white/10 bg-[#0b1119]/88 p-5">
-      <div className="mb-5 flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-md border border-white/10 bg-white/[0.055]">
-            <Icon size={21} className={useCase.accent} />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-white">{useCase.title}</h3>
-            <p className="mt-1 text-xs font-medium uppercase text-foreground/42">Industrial track</p>
-          </div>
-        </div>
-        <span className="rounded-md border border-primary/25 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">{useCase.status}</span>
-      </div>
-
-      <CaseLine label="Industrial problem" value={useCase.problem} />
-      <CaseLine label="Approach studied" value={useCase.approach} />
-      <CaseLine label="Partners" value={useCase.partners} />
     </article>
   );
 }
