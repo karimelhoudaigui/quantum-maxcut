@@ -550,13 +550,13 @@ function HeroSignalGrid({ onNavigate }: QuantinaPageProps) {
         </button>
         <button
           type="button"
-          onClick={() => onNavigate("/simulations/maxcut")}
+          onClick={() => onNavigate("/")}
           className="group min-h-[132px] rounded-lg border border-primary/25 bg-primary/[0.09] p-4 text-left text-white backdrop-blur-2xl transition hover:border-primary/50"
         >
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-base font-semibold">Simulation platform</p>
-              <p className="mt-1 text-xs text-white/55">MaxCut demonstrator</p>
+              <p className="mt-1 text-xs text-white/55">All simulations and demonstrators</p>
             </div>
             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-background">
               <ArrowRight size={15} />
