@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { usePipelineRunner } from "../hooks/usePipeline";
 import { buildInfo, formatBuildInfoDate } from "../lib/buildInfo";
 import { usePipelineStore } from "../stores/pipelineStore";
-import type { HpcPhaseUpdate, HpcRoundingProgress, PipelineStep } from "../types";
+import type { HpcJobStatus, HpcPhaseUpdate, HpcRoundingProgress, PipelineStep } from "../types";
 
 const HPC_STATUS_LABELS: Partial<Record<string, string>> = {
   queued_slurm: "queued on SLURM",
@@ -18,6 +18,18 @@ const HPC_PHASE_TO_STEP: Record<HpcPhaseUpdate["phase"], PipelineStep["id"]> = {
   rounding: "rounding",
 };
 
+// Le cadre "HPC job" suit le même code couleur/icône que les 5 cartes de
+// phase ci-dessus (StepCard) : vert + spinner tant que le job est en file
+// SLURM ou en cours d'exécution, vert plein une fois terminé, rouge en cas
+// d'erreur/annulation. Une fois "running", le détail phase par phase prend
+// le relais dans les cartes (hpcStepsFromProgress) — ce cadre ne fait que
+// donner l'état global du job.
+function hpcJobToStepStatus(status: HpcJobStatus): PipelineStep["status"] {
+  if (status === "done") return "completed";
+  if (status === "error" || status === "cancelled") return "failed";
+  return "running";
+}
+
 export function PipelineRunner() {
   const graph = usePipelineStore((state) => state.graph);
   const job = usePipelineStore((state) => state.job);
@@ -25,6 +37,7 @@ export function PipelineRunner() {
   const { run, hpcRun, hpcStop } = usePipelineRunner();
   const hpcActive = hpcJob && !["done", "error", "cancelled"].includes(hpcJob.status);
   const hpcStoppable = hpcActive && hpcJob.status !== "cancelling";
+  const hpcBoxStatus: PipelineStep["status"] = hpcJob ? hpcJobToStepStatus(hpcJob.status) : hpcRun.error ? "failed" : "pending";
 
   const steps = useMemo(() => {
     if (hpcJob) {
@@ -103,9 +116,12 @@ export function PipelineRunner() {
       ) : null}
 
       {hpcRun.error || hpcJob ? (
-        <div className="mt-4 rounded-md border border-primary/25 bg-primary/5 p-3 text-sm">
+        <div className={`mt-4 rounded-md border p-3 text-sm transition-colors duration-500 ${STEP_STATUS_STYLES[hpcBoxStatus]}`}>
           <div className="flex items-center justify-between gap-3">
-            <span className="font-semibold text-primary">HPC job</span>
+            <span className={`flex items-center gap-2 font-semibold ${STEP_STATUS_TEXT_STYLES[hpcBoxStatus]}`}>
+              {statusIcon(hpcBoxStatus, 16)}
+              HPC job
+            </span>
             <span className="font-mono text-xs text-foreground/60">{hpcJob?.job_id ?? "not submitted"}</span>
           </div>
           {hpcRun.error ? <p className="mt-2 text-red-200">{hpcRun.error.message}</p> : null}
@@ -228,13 +244,17 @@ const STEP_STATUS_TEXT_STYLES: Record<PipelineStep["status"], string> = {
   failed: "text-red-300",
 };
 
+function statusIcon(status: PipelineStep["status"], size = 15) {
+  return {
+    pending: <Activity size={size} />,
+    running: <Loader2 className="animate-spin" size={size} />,
+    completed: <Check size={size} />,
+    failed: <X size={size} />,
+  }[status];
+}
+
 function StepCard({ step }: { step: PipelineStep }) {
-  const icon = {
-    pending: <Activity size={15} />,
-    running: <Loader2 className="animate-spin" size={15} />,
-    completed: <Check size={15} />,
-    failed: <X size={15} />,
-  }[step.status];
+  const icon = statusIcon(step.status);
 
   return (
     <article className={`min-h-28 rounded-md border p-3 transition-colors duration-500 ${STEP_STATUS_STYLES[step.status]}`}>
