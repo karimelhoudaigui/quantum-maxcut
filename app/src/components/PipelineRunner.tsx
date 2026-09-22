@@ -2,6 +2,7 @@ import { Activity, Check, Cloud, Loader2, Square, X } from "lucide-react";
 import { useMemo } from "react";
 
 import { usePipelineRunner } from "../hooks/usePipeline";
+import { buildInfo, formatBuildInfoDate } from "../lib/buildInfo";
 import { usePipelineStore } from "../stores/pipelineStore";
 import type { HpcPhaseUpdate, HpcRoundingProgress, PipelineStep } from "../types";
 
@@ -43,6 +44,12 @@ export function PipelineRunner() {
         <div>
           <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/60">Pipeline</h2>
           <p className="text-xl font-semibold">Method: Hybrid Quantum Optimizer HybQuant</p>
+          <p
+            className="mt-1 font-mono text-[11px] text-foreground/40"
+            title={`Build: ${formatBuildInfoDate(buildInfo.buildDate)}\nCommit: ${buildInfo.commitHash}\nCommit date: ${formatBuildInfoDate(buildInfo.commitDate)}`}
+          >
+            build {formatBuildInfoDate(buildInfo.buildDate)} · commit {buildInfo.commitHash} ({formatBuildInfoDate(buildInfo.commitDate)})
+          </p>
         </div>
         <button
           type="button"
