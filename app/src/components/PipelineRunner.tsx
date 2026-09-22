@@ -18,26 +18,56 @@ const HPC_PHASE_TO_STEP: Record<HpcPhaseUpdate["phase"], PipelineStep["id"]> = {
   rounding: "rounding",
 };
 
-// Le cadre "HPC job" suit le même code couleur/icône que les 5 cartes de
-// phase ci-dessus (StepCard) : vert + spinner tant que le job est en file
-// SLURM ou en cours d'exécution, vert plein une fois terminé, rouge en cas
-// d'erreur/annulation. Une fois "running", le détail phase par phase prend
-// le relais dans les cartes (hpcStepsFromProgress) — ce cadre ne fait que
-// donner l'état global du job.
+// Le cadre "HPC job" suit le même code couleur que les 5 cartes de phase
+// ci-dessus (StepCard) : vert tant que le job est en file SLURM ou en cours
+// d'exécution, vert plein une fois terminé, rouge en cas d'erreur/annulation.
+// Une fois "running", le détail phase par phase prend le relais dans les
+// cartes (hpcStepsFromProgress) — ce cadre ne fait que donner l'état global.
 function hpcJobToStepStatus(status: HpcJobStatus): PipelineStep["status"] {
   if (status === "done") return "completed";
   if (status === "error" || status === "cancelled") return "failed";
   return "running";
 }
 
+// L'icône du cadre, elle, se distingue de statusIcon() : le spinner ne
+// tourne que tant que le job est en file d'attente (SLURM pas encore
+// démarré) ou en cours d'annulation — une fois réellement "running", il
+// n'apparaît plus (les cartes de phase ci-dessus prennent le relais pour
+// montrer une progression animée ; garder ce cadre-ci figé évite un spinner
+// qui tournerait indéfiniment pendant toute la durée du calcul).
+const HPC_SPINNING_STATUSES = new Set<HpcJobStatus>([
+  "queued",
+  "waiting_for_worker",
+  "dispatched",
+  "submitting",
+  "queued_slurm",
+  "cancelling",
+]);
+
+function hpcBoxIcon(jobStatus: HpcJobStatus | undefined, submissionFailed: boolean) {
+  if (!jobStatus) return submissionFailed ? <X size={16} /> : <Activity size={16} />;
+  if (jobStatus === "done") return <Check size={16} />;
+  if (jobStatus === "error" || jobStatus === "cancelled") return <X size={16} />;
+  if (HPC_SPINNING_STATUSES.has(jobStatus)) return <Loader2 className="animate-spin" size={16} />;
+  return <Cloud size={16} />;
+}
+
 export function PipelineRunner() {
   const graph = usePipelineStore((state) => state.graph);
   const job = usePipelineStore((state) => state.job);
   const hpcJob = usePipelineStore((state) => state.hpcJob);
-  const { run, hpcRun, hpcStop } = usePipelineRunner();
+  const { run, hpcRun, hpcStop, workers } = usePipelineRunner();
   const hpcActive = hpcJob && !["done", "error", "cancelled"].includes(hpcJob.status);
   const hpcStoppable = hpcActive && hpcJob.status !== "cancelling";
   const hpcBoxStatus: PipelineStep["status"] = hpcJob ? hpcJobToStepStatus(hpcJob.status) : hpcRun.error ? "failed" : "pending";
+
+  // workers.isSuccess : on ne sait rien de la disponibilité du cluster tant
+  // que /api/workers n'a jamais répondu (ex. aucun jeton HPC connu encore,
+  // cf. enabled: hasHpcToken() dans usePipeline.ts) — dans ce cas on ne
+  // bloque pas le bouton, on retombe sur le comportement précédent.
+  const workersKnown = workers.isSuccess;
+  const workerCount = workers.data?.length ?? 0;
+  const clusterUnavailable = workersKnown && workerCount === 0;
 
   const steps = useMemo(() => {
     if (hpcJob) {
@@ -76,10 +106,16 @@ export function PipelineRunner() {
         <div className="flex items-stretch overflow-hidden rounded-md border border-primary/60">
           <button
             type="button"
-            disabled={!graph || hpcRun.isPending}
+            disabled={!graph || hpcRun.isPending || clusterUnavailable}
             onClick={() => hpcRun.mutate()}
             className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-45"
-            title={hpcActive ? "Cancel the running HPC job and submit this configuration instead" : "Submit this configuration to hpc-bridge"}
+            title={
+              clusterUnavailable
+                ? "No HPC worker connected to hpc-bridge — start hpc_worker.py on the cluster"
+                : hpcActive
+                  ? "Cancel the running HPC job and submit this configuration instead"
+                  : "Submit this configuration to hpc-bridge"
+            }
           >
             {hpcRun.isPending || hpcActive ? <Loader2 className="animate-spin" size={16} /> : <Cloud size={16} />}
             {hpcActive ? "Restart HPC" : "Run HPC"}
@@ -98,6 +134,14 @@ export function PipelineRunner() {
           ) : null}
         </div>
       </div>
+
+      {workersKnown ? (
+        <p className="mb-3 -mt-2 text-right text-[11px] text-foreground/40">
+          {workerCount > 0
+            ? `${workerCount} HPC worker${workerCount > 1 ? "s" : ""} connected to hpc-bridge`
+            : "No HPC worker connected to hpc-bridge"}
+        </p>
+      ) : null}
 
       <div className="mb-4 h-2 overflow-hidden rounded-full bg-background">
         <div className="h-full bg-primary transition-all duration-500" style={{ width: `${job?.progress ?? 0}%` }} />
@@ -119,7 +163,7 @@ export function PipelineRunner() {
         <div className={`mt-4 rounded-md border p-3 text-sm transition-colors duration-500 ${STEP_STATUS_STYLES[hpcBoxStatus]}`}>
           <div className="flex items-center justify-between gap-3">
             <span className={`flex items-center gap-2 font-semibold ${STEP_STATUS_TEXT_STYLES[hpcBoxStatus]}`}>
-              {statusIcon(hpcBoxStatus, 16)}
+              {hpcBoxIcon(hpcJob?.status, Boolean(hpcRun.error))}
               HPC job
             </span>
             <span className="font-mono text-xs text-foreground/60">{hpcJob?.job_id ?? "not submitted"}</span>

@@ -121,6 +121,12 @@ export interface HpcJob {
   resources?: HpcJobResources | null;
 }
 
+export interface HpcWorker {
+  worker_id: string;
+  hostname: string;
+  connected_at: string;
+}
+
 export interface FamilyResultRow {
   family: string;
   metrics: Record<string, number | string>;

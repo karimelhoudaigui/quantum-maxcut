@@ -4,6 +4,7 @@ import type {
   GraphGenerateRequest,
   GraphResponse,
   HpcJob,
+  HpcWorker,
   PipelineJob,
 } from "../types";
 import {
@@ -26,6 +27,17 @@ function getHpcToken(): string {
     if (token) localStorage.setItem("hpc_bridge_token", token);
   }
   return token;
+}
+
+// Lecture seule (pas de window.prompt) : sert à décider si on peut interroger
+// /api/workers en tâche de fond sans surprendre l'utilisateur avec une
+// popup avant qu'il n'ait lui-même déclenché une action HPC.
+export function hasHpcToken(): boolean {
+  try {
+    return Boolean(localStorage.getItem("hpc_bridge_token")?.trim());
+  } catch {
+    return false;
+  }
 }
 
 async function request<T>(path: string, init?: ApiRequestInit): Promise<T> {
@@ -126,6 +138,17 @@ export function cancelHpcJob(jobId: string): Promise<HpcJob> {
   return request<HpcJob>(`/api/jobs/${jobId}/cancel`, {
     baseUrl: HPC_BRIDGE_URL,
     method: "POST",
+    headers: { Authorization: `Bearer ${getHpcToken()}` },
+  });
+}
+
+// Réservé aux appelants qui vérifient hasHpcToken() au préalable (cf.
+// usePipeline.ts, enabled: hasHpcToken()) : n'est jamais censé être appelé
+// avant que l'utilisateur ait déjà fourni un jeton via une action HPC
+// explicite, pour ne pas déclencher de window.prompt en tâche de fond.
+export function getWorkers(): Promise<HpcWorker[]> {
+  return request<HpcWorker[]>("/api/workers", {
+    baseUrl: HPC_BRIDGE_URL,
     headers: { Authorization: `Bearer ${getHpcToken()}` },
   });
 }

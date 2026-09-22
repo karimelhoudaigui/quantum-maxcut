@@ -1,7 +1,16 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 
-import { cancelHpcJob, generateGraph, getHpcJob, getPipelineStatus, runHpcPipeline, runPipeline } from "../lib/api";
+import {
+  cancelHpcJob,
+  generateGraph,
+  getHpcJob,
+  getPipelineStatus,
+  getWorkers,
+  hasHpcToken,
+  runHpcPipeline,
+  runPipeline,
+} from "../lib/api";
 import { usePipelineStore } from "../stores/pipelineStore";
 
 const HPC_ACTIVE_STATUSES = ["queued", "waiting_for_worker", "dispatched", "submitting", "running"];
@@ -80,6 +89,20 @@ export function usePipelineRunner() {
     onSuccess: setHpcJob,
   });
 
+  // enabled: hasHpcToken() — n'interroge /api/workers que si un jeton HPC a
+  // déjà été fourni par ailleurs (ex. un précédent Run HPC), pour ne jamais
+  // déclencher le window.prompt du jeton juste pour savoir si le bouton doit
+  // être actif. Tant qu'aucun jeton n'est connu, workers.isSuccess reste
+  // false et PipelineRunner retombe sur son comportement précédent (bouton
+  // actif dès qu'un graphe existe) plutôt que de bloquer sans pouvoir vérifier.
+  const workers = useQuery({
+    queryKey: ["hpc-workers"],
+    queryFn: getWorkers,
+    enabled: hasHpcToken(),
+    refetchInterval: 5000,
+    retry: 1,
+  });
+
   useEffect(() => {
     if (status.data && status.data.job_id === job?.job_id) {
       setJob(status.data);
@@ -92,5 +115,5 @@ export function usePipelineRunner() {
     }
   }, [hpcJob?.job_id, hpcStatus.data, setHpcJob]);
 
-  return { run, status, hpcRun, hpcStatus, hpcStop };
+  return { run, status, hpcRun, hpcStatus, hpcStop, workers };
 }
