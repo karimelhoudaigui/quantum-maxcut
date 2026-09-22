@@ -229,6 +229,42 @@ function QueuePosition({ position, total }: { position: number; total: number | 
   );
 }
 
+function SliderField({
+  label,
+  value,
+  min,
+  max,
+  suffix = "",
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  suffix?: string;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="flex flex-col gap-1 text-xs text-foreground/60">
+      <span className="flex items-center justify-between">
+        <span>{label}</span>
+        <span className="font-mono text-foreground/80">
+          {value}
+          {suffix}
+        </span>
+      </span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        value={Math.min(Math.max(value, min), max)}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="accent-primary"
+      />
+    </label>
+  );
+}
+
 // Menu de paramétrage du run HPC, replié par défaut (élément <details> natif,
 // même pattern que ResultJson ci-dessous) : les bornes (partitions proposées,
 // cœurs/mémoire max, temps max par partition) viennent de ce que le worker
@@ -252,7 +288,13 @@ function HpcResourceSettings({
   const partitionInfo = selectedPartition ? capabilities?.partitions[selectedPartition] : undefined;
   const maxCpus = capabilities?.max_cpus ?? 32;
   const maxMemGb = capabilities?.max_mem_gb ?? 0;
+  // Le worker peut annoncer "pas de plafond configuré" (max_mem_gb=0, cf.
+  // --max-mem-gb) : un slider a quand même besoin d'une borne finie pour être
+  // utilisable, 128 Go sert alors de repère purement indicatif côté UI — le
+  // worker, lui, n'appliquera aucun plafond réel dans ce cas (cf. resolve_job_resources).
+  const memSliderMax = maxMemGb > 0 ? maxMemGb : 128;
   const defaultTimeMin = capabilities?.default_time_min_minutes ?? 20;
+  const timeMinSliderMax = partitionInfo?.max_time_minutes ?? 1440;
 
   return (
     <details className="mb-4 rounded-md border border-border bg-background/60">
@@ -277,41 +319,31 @@ function HpcResourceSettings({
           </select>
         </label>
 
-        <label className="flex flex-col gap-1 text-xs text-foreground/60">
-          Cores (max {maxCpus})
-          <input
-            type="number"
-            min={1}
-            max={maxCpus}
-            value={resources.cpus ?? capabilities?.default_cpus_per_task ?? 8}
-            onChange={(e) => onChange({ cpus: Number(e.target.value) })}
-            className="rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
-          />
-        </label>
+        <SliderField
+          label="Cores"
+          min={1}
+          max={maxCpus}
+          value={resources.cpus ?? capabilities?.default_cpus_per_task ?? 8}
+          onChange={(cpus) => onChange({ cpus })}
+        />
 
-        <label className="flex flex-col gap-1 text-xs text-foreground/60">
-          Memory GB (0 = auto{maxMemGb > 0 ? `, max ${maxMemGb}` : ""})
-          <input
-            type="number"
-            min={0}
-            max={maxMemGb > 0 ? maxMemGb : undefined}
-            value={resources.mem_gb ?? 0}
-            onChange={(e) => onChange({ mem_gb: Number(e.target.value) })}
-            className="rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
-          />
-        </label>
+        <SliderField
+          label={`Memory (0 = auto${maxMemGb <= 0 ? ", no server-side cap" : ""})`}
+          min={0}
+          max={memSliderMax}
+          suffix=" GB"
+          value={resources.mem_gb ?? 0}
+          onChange={(mem_gb) => onChange({ mem_gb })}
+        />
 
-        <label className="flex flex-col gap-1 text-xs text-foreground/60">
-          Min time, minutes{partitionInfo ? ` (max ${partitionInfo.max_time_raw})` : ""}
-          <input
-            type="number"
-            min={1}
-            max={partitionInfo?.max_time_minutes ?? undefined}
-            value={resources.time_min_minutes ?? defaultTimeMin}
-            onChange={(e) => onChange({ time_min_minutes: Number(e.target.value) })}
-            className="rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
-          />
-        </label>
+        <SliderField
+          label={`Min time${partitionInfo ? ` (partition max ${partitionInfo.max_time_raw})` : ""}`}
+          min={1}
+          max={timeMinSliderMax}
+          suffix=" min"
+          value={resources.time_min_minutes ?? defaultTimeMin}
+          onChange={(time_min_minutes) => onChange({ time_min_minutes })}
+        />
       </div>
     </details>
   );
