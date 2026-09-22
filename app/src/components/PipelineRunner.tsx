@@ -109,7 +109,9 @@ export function PipelineRunner() {
                 Status: <span className="font-medium text-foreground">{HPC_STATUS_LABELS[hpcJob.status] ?? hpcJob.status}</span>
                 {hpcJob.slurm_job_id ? ` · SLURM ${hpcJob.slurm_job_id}` : ""}
                 {hpcJob.resources
-                  ? ` · ${hpcJob.resources.nodes} node${hpcJob.resources.nodes > 1 ? "s" : ""} · ${hpcJob.resources.cpus_per_task} cores`
+                  ? ` · ${hpcJob.resources.nodes} node${hpcJob.resources.nodes > 1 ? "s" : ""} · ${hpcJob.resources.cpus_per_task} cores${
+                      hpcJob.resources.partition ? ` · partition ${hpcJob.resources.partition}` : ""
+                    }`
                   : ""}
               </p>
               {hpcJob.result ? <ResultJson result={hpcJob.result} /> : null}

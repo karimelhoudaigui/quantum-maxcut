@@ -105,6 +105,7 @@ export interface HpcJobProgress {
 export interface HpcJobResources {
   cpus_per_task: number;
   nodes: number;
+  partition?: string | null;
 }
 
 export interface HpcJob {
