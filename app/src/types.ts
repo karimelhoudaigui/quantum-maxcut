@@ -60,6 +60,8 @@ export interface PipelineStep {
   metric_label: string | null;
   metric_value: number | string | null;
   duration_seconds?: number;
+  /** Décomposition optionnelle de duration_seconds (ex. "pulser" : ground state vs simulation qutip). */
+  breakdown?: { label: string; seconds: number }[];
 }
 
 export interface PipelineJob {
@@ -86,7 +88,12 @@ export type HpcJobStatus =
 export interface HpcPhaseUpdate {
   phase: "setup" | "positions" | "pulser" | "sdp" | "rounding";
   completed_at: number;
+  /** Pour "pulser" : total = ground_state_qmc + ground_state_r + run_pulser_sequence (cf. les 3 champs ci-dessous). */
   duration_seconds: number;
+  /** Décomposition de la phase "pulser" uniquement (np.linalg.eigh × 2, puis la simulation qutip elle-même). */
+  ground_state_qmc_duration_seconds?: number;
+  ground_state_r_duration_seconds?: number;
+  run_pulser_sequence_duration_seconds?: number;
   magnetization_series?: { times: number[]; magnetization: number[][] } | null;
   rounding_trials_series?: { seed: number; ratio_product: number }[] | null;
 }
@@ -119,9 +126,10 @@ export interface HpcJob {
   finished_at?: string | null;
   progress?: HpcJobProgress | null;
   resources?: HpcJobResources | null;
-  /** Estimation SLURM (squeue --start) de l'heure de démarrage, tant que le job est "queued_slurm".
-   *  Heure locale du cluster, sans fuseau explicite (limite connue, cf. worker/hpc_worker.py). */
-  estimated_start_time?: string | null;
+  /** Délai d'attente estimé par SLURM (squeue --start), en secondes depuis l'envoi de ce job_update,
+   *  tant que le job est "queued_slurm". Calculé côté worker (cf. hpc_worker.py) pour éviter tout
+   *  souci de fuseau horaire — jamais une heure absolue. null si SLURM n'a pas d'estimation. */
+  estimated_wait_seconds?: number | null;
 }
 
 export interface HpcWorker {

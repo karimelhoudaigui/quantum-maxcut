@@ -189,8 +189,8 @@ export function PipelineRunner() {
               {hpcJob.result ? <ResultJson result={hpcJob.result} /> : null}
             </div>
           ) : null}
-          {hpcJob?.status === "queued_slurm" && hpcJob.estimated_start_time ? (
-            <EstimatedStartCountdown iso={hpcJob.estimated_start_time} />
+          {hpcJob?.status === "queued_slurm" && hpcJob.estimated_wait_seconds != null ? (
+            <EstimatedStartCountdown seconds={hpcJob.estimated_wait_seconds} />
           ) : null}
           {hpcJob?.error ? <p className="mt-2 text-red-200">{hpcJob.error}</p> : null}
         </div>
@@ -205,18 +205,26 @@ export function PipelineRunner() {
 // les deux coïncident (indicatif, pas garanti). Ticke chaque seconde en
 // interne pour un compte à rebours fluide entre deux polls (hpcStatus
 // n'interroge le job que toutes les 3s).
-function EstimatedStartCountdown({ iso }: { iso: string }) {
-  const target = useMemo(() => new Date(iso).getTime(), [iso]);
-  const [now, setNow] = useState(() => Date.now());
+function EstimatedStartCountdown({ seconds }: { seconds: number }) {
+  // Le worker envoie un délai (secondes), pas une heure absolue (cf.
+  // hpc_worker.py get_estimated_wait_seconds) : calculé sur l'horloge de
+  // curta, il évite tout risque de mauvaise interprétation de fuseau côté
+  // navigateur. On se recale sur `seconds` à chaque nouvelle valeur reçue
+  // (le worker ne la rafraîchit que toutes les 60-300s, cf. son rythme
+  // adaptatif) et on décrémente localement chaque seconde entre deux
+  // recalages, pour un compte à rebours fluide.
+  const [remaining, setRemaining] = useState(seconds);
 
   useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    setRemaining(seconds);
+  }, [seconds]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setRemaining((value) => Math.max(0, value - 1)), 1000);
     return () => window.clearInterval(id);
   }, []);
 
-  if (Number.isNaN(target)) return null;
-
-  const remainingSeconds = Math.max(0, Math.round((target - now) / 1000));
+  const remainingSeconds = Math.max(0, Math.round(remaining));
   const label =
     remainingSeconds <= 0
       ? "starting any moment"
@@ -226,7 +234,7 @@ function EstimatedStartCountdown({ iso }: { iso: string }) {
 
   return (
     <p className="mt-1 text-xs text-foreground/50" title="SLURM backfill estimate — indicative, not guaranteed">
-      Estimated start: {label}
+      Estimated wait: {label}
     </p>
   );
 }
@@ -260,6 +268,29 @@ const STEP_RESULT_METRIC_KEY: Record<PipelineStep["id"], string> = {
   rounding: "ratio_hybrid",
 };
 
+// Décompose la carte "Pulser" en deux temps (cf. quantum_pulser/pulser_smooth.py) :
+// les deux diagonalisations ground_state (np.linalg.eigh, notre code) d'un
+// côté, la simulation qutip elle-même (run_pulser_sequence) de l'autre. Les
+// deux premières sont fusionnées en une seule ligne : le compte à rendre à
+// l'utilisateur est "où passe le temps", pas la distinction qmc/proxy.
+function pulserBreakdown(
+  phase: HpcPhaseUpdate | undefined,
+  fallback: Record<string, unknown> | undefined,
+): PipelineStep["breakdown"] {
+  const numberOr = (value: unknown): number | undefined => (typeof value === "number" ? value : undefined);
+  const groundStateQmc = phase?.ground_state_qmc_duration_seconds ?? numberOr(fallback?.["ground_state_qmc"]);
+  const groundStateR = phase?.ground_state_r_duration_seconds ?? numberOr(fallback?.["ground_state_r"]);
+  const runSequence = phase?.run_pulser_sequence_duration_seconds ?? numberOr(fallback?.["run_pulser_sequence"]);
+
+  if (groundStateQmc === undefined && groundStateR === undefined && runSequence === undefined) {
+    return undefined;
+  }
+  return [
+    { label: "Ground state (×2)", seconds: (groundStateQmc ?? 0) + (groundStateR ?? 0) },
+    { label: "Pulser simulation", seconds: runSequence ?? 0 },
+  ];
+}
+
 function hpcStepsFromProgress(
   phases: HpcPhaseUpdate[],
   jobStatus: string,
@@ -280,6 +311,11 @@ function hpcStepsFromProgress(
   const finalPhaseIds = new Set(
     rawDoneKeys.map((key) => (key === "positions" ? "geometry" : key) as PipelineStep["id"]),
   );
+  // Filet de sécurité identique à phaseDurations ci-dessus, pour le détail de
+  // la phase "pulser" (ground_state × 2 vs simulation qutip elle-même) : vient
+  // du flux streamé (phase.*) si dispo, sinon du résultat final une fois le
+  // job terminé.
+  const pulserBreakdownSeconds = result?.["pulser_breakdown_seconds"] as Record<string, unknown> | undefined;
 
   return emptySteps.map((step, index) => {
     if (completedStepIds.has(step.id) || finalPhaseIds.has(step.id)) {
@@ -292,6 +328,7 @@ function hpcStepsFromProgress(
         status: "completed",
         metric_value: typeof metricValue === "number" || typeof metricValue === "string" ? metricValue : null,
         duration_seconds: phase?.duration_seconds ?? (typeof fallbackDuration === "number" ? fallbackDuration : undefined),
+        breakdown: step.id === "pulser" ? pulserBreakdown(phase, pulserBreakdownSeconds) : undefined,
       };
     }
     const previousCompleted = index === 0 || completedStepIds.has(emptySteps[index - 1].id) || finalPhaseIds.has(emptySteps[index - 1].id);
@@ -354,6 +391,16 @@ function StepCard({ step }: { step: PipelineStep }) {
       <p className="mt-1 truncate font-mono text-sm text-primary">
         {typeof step.metric_value === "number" ? step.metric_value.toFixed(5) : step.metric_value ?? "—"}
       </p>
+      {step.breakdown ? (
+        <ul className="mt-2 space-y-0.5 border-t border-current/10 pt-1.5 text-[11px] text-foreground/50">
+          {step.breakdown.map((row) => (
+            <li key={row.label} className="flex justify-between gap-2">
+              <span className="truncate">{row.label}</span>
+              <span className="shrink-0 font-mono">{row.seconds.toFixed(2)}s</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </article>
   );
 }
