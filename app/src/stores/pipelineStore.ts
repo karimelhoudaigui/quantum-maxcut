@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import type { AnnealingConfig, GraphGenerateRequest, GraphResponse, HpcJob, PipelineJob } from "../types";
+import type { AnnealingConfig, GraphGenerateRequest, GraphResponse, HpcJob, HpcResourcesRequest, PipelineJob } from "../types";
 
 interface PipelineState {
   config: GraphGenerateRequest;
@@ -10,6 +10,7 @@ interface PipelineState {
   graph: GraphResponse | null;
   job: PipelineJob | null;
   hpcJob: HpcJob | null;
+  hpcResources: HpcResourcesRequest;
   setConfig: (config: Partial<GraphGenerateRequest>) => void;
   setAnnealing: (annealing: Partial<AnnealingConfig>) => void;
   setEnableAnimations: (enableAnimations: boolean) => void;
@@ -17,6 +18,7 @@ interface PipelineState {
   setGraph: (graph: GraphResponse) => void;
   setJob: (job: PipelineJob | null) => void;
   setHpcJob: (job: HpcJob | null) => void;
+  setHpcResources: (resources: Partial<HpcResourcesRequest>) => void;
 }
 
 export const usePipelineStore = create<PipelineState>((set) => ({
@@ -45,6 +47,7 @@ export const usePipelineStore = create<PipelineState>((set) => ({
   graph: null,
   job: null,
   hpcJob: null,
+  hpcResources: {},
   setConfig: (config) => set((state) => ({ config: { ...state.config, ...config } })),
   setAnnealing: (annealing) => set((state) => ({ annealing: { ...state.annealing, ...annealing } })),
   setEnableAnimations: (enableAnimations) => set({ enableAnimations }),
@@ -52,4 +55,5 @@ export const usePipelineStore = create<PipelineState>((set) => ({
   setGraph: (graph) => set({ graph }),
   setJob: (job) => set({ job }),
   setHpcJob: (hpcJob) => set({ hpcJob }),
+  setHpcResources: (resources) => set((state) => ({ hpcResources: { ...state.hpcResources, ...resources } })),
 }));

@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { usePipelineRunner } from "../hooks/usePipeline";
 import { buildInfo, formatBuildInfoDate } from "../lib/buildInfo";
 import { usePipelineStore } from "../stores/pipelineStore";
-import type { HpcJobStatus, HpcPhaseUpdate, HpcRoundingProgress, PipelineStep } from "../types";
+import type { HpcJobStatus, HpcPhaseUpdate, HpcResourcesRequest, HpcRoundingProgress, HpcWorkerCapabilities, PipelineStep } from "../types";
 
 const HPC_STATUS_LABELS: Partial<Record<string, string>> = {
   queued_slurm: "queued on SLURM",
@@ -56,7 +56,12 @@ export function PipelineRunner() {
   const graph = usePipelineStore((state) => state.graph);
   const job = usePipelineStore((state) => state.job);
   const hpcJob = usePipelineStore((state) => state.hpcJob);
+  const hpcResources = usePipelineStore((state) => state.hpcResources);
+  const setHpcResources = usePipelineStore((state) => state.setHpcResources);
   const { run, hpcRun, hpcStop, workers } = usePipelineRunner();
+  // Un seul worker attendu en pratique (POC) — cf. dispatch_to_worker côté SL, qui prend déjà
+  // le premier worker connecté sans faire de choix ; on affiche donc ses capacités telles quelles.
+  const workerCapabilities = workers.data?.[0]?.capabilities;
   const hpcActive = hpcJob && !["done", "error", "cancelled"].includes(hpcJob.status);
   const hpcStoppable = hpcActive && hpcJob.status !== "cancelling";
   const hpcBoxStatus: PipelineStep["status"] = hpcJob ? hpcJobToStepStatus(hpcJob.status) : hpcRun.error ? "failed" : "pending";
@@ -148,6 +153,8 @@ export function PipelineRunner() {
         </p>
       ) : null}
 
+      <HpcResourceSettings capabilities={workerCapabilities} resources={hpcResources} onChange={setHpcResources} />
+
       <div className="mb-4 h-2 overflow-hidden rounded-full bg-background">
         <div className="h-full bg-primary transition-all duration-500" style={{ width: `${job?.progress ?? 0}%` }} />
       </div>
@@ -183,6 +190,8 @@ export function PipelineRunner() {
                 {hpcJob.resources
                   ? ` · ${hpcJob.resources.nodes} node${hpcJob.resources.nodes > 1 ? "s" : ""} · ${hpcJob.resources.cpus_per_task} cores${
                       hpcJob.resources.partition ? ` · partition ${hpcJob.resources.partition}` : ""
+                    }${hpcJob.resources.mem_gb ? ` · ${hpcJob.resources.mem_gb}GB` : ""}${
+                      hpcJob.resources.time_min_minutes ? ` · time-min ${hpcJob.resources.time_min_minutes}min` : ""
                     }`
                   : ""}
               </p>
@@ -217,6 +226,94 @@ function QueuePosition({ position, total }: { position: number; total: number | 
     <p className="mt-1 text-xs text-foreground/50" title="Rank among pending jobs on this partition — indicative, not a time estimate">
       Queue position: {label}
     </p>
+  );
+}
+
+// Menu de paramétrage du run HPC, replié par défaut (élément <details> natif,
+// même pattern que ResultJson ci-dessous) : les bornes (partitions proposées,
+// cœurs/mémoire max, temps max par partition) viennent de ce que le worker
+// connecté a annoncé à sa connexion (cf. hpc_worker.py WorkerConfig/register,
+// sl_server.py Worker.capabilities) — un client ne peut jamais les dépasser,
+// quoi qu'il envoie ici (revérifié côté worker, cf. resolve_job_resources).
+function HpcResourceSettings({
+  capabilities,
+  resources,
+  onChange,
+}: {
+  capabilities: HpcWorkerCapabilities | undefined;
+  resources: HpcResourcesRequest;
+  onChange: (patch: Partial<HpcResourcesRequest>) => void;
+}) {
+  const partitionNames = useMemo(
+    () => (capabilities ? Object.keys(capabilities.partitions).sort() : []),
+    [capabilities],
+  );
+  const selectedPartition = resources.partition ?? capabilities?.default_partition ?? partitionNames[0];
+  const partitionInfo = selectedPartition ? capabilities?.partitions[selectedPartition] : undefined;
+  const maxCpus = capabilities?.max_cpus ?? 32;
+  const maxMemGb = capabilities?.max_mem_gb ?? 0;
+  const defaultTimeMin = capabilities?.default_time_min_minutes ?? 20;
+
+  return (
+    <details className="mb-4 rounded-md border border-border bg-background/60">
+      <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium text-foreground/60 hover:text-foreground">
+        Job resources{selectedPartition ? ` (${selectedPartition})` : ""}
+      </summary>
+      <div className="grid gap-3 border-t border-border p-3 sm:grid-cols-2 lg:grid-cols-4">
+        <label className="flex flex-col gap-1 text-xs text-foreground/60">
+          Partition
+          <select
+            value={selectedPartition ?? ""}
+            disabled={partitionNames.length === 0}
+            onChange={(e) => onChange({ partition: e.target.value })}
+            className="rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground disabled:opacity-50"
+          >
+            {partitionNames.length === 0 ? <option value="">(none advertised)</option> : null}
+            {partitionNames.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-1 text-xs text-foreground/60">
+          Cores (max {maxCpus})
+          <input
+            type="number"
+            min={1}
+            max={maxCpus}
+            value={resources.cpus ?? capabilities?.default_cpus_per_task ?? 8}
+            onChange={(e) => onChange({ cpus: Number(e.target.value) })}
+            className="rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
+          />
+        </label>
+
+        <label className="flex flex-col gap-1 text-xs text-foreground/60">
+          Memory GB (0 = auto{maxMemGb > 0 ? `, max ${maxMemGb}` : ""})
+          <input
+            type="number"
+            min={0}
+            max={maxMemGb > 0 ? maxMemGb : undefined}
+            value={resources.mem_gb ?? 0}
+            onChange={(e) => onChange({ mem_gb: Number(e.target.value) })}
+            className="rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
+          />
+        </label>
+
+        <label className="flex flex-col gap-1 text-xs text-foreground/60">
+          Min time, minutes{partitionInfo ? ` (max ${partitionInfo.max_time_raw})` : ""}
+          <input
+            type="number"
+            min={1}
+            max={partitionInfo?.max_time_minutes ?? undefined}
+            value={resources.time_min_minutes ?? defaultTimeMin}
+            onChange={(e) => onChange({ time_min_minutes: Number(e.target.value) })}
+            className="rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
+          />
+        </label>
+      </div>
+    </details>
   );
 }
 

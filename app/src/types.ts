@@ -113,6 +113,9 @@ export interface HpcJobResources {
   cpus_per_task: number;
   nodes: number;
   partition?: string | null;
+  mem_gb?: number | null;
+  time_min_minutes?: number | null;
+  time_max?: string | null;
 }
 
 export interface HpcJob {
@@ -135,10 +138,38 @@ export interface HpcJob {
   queue_total?: number | null;
 }
 
+export interface HpcPartitionInfo {
+  max_time_minutes: number | null;
+  max_time_raw: string;
+}
+
+/** Ce que le worker propose (cf. hpc_worker.py WorkerConfig/register) — sert à peupler le menu
+ *  de paramétrage du run côté client, borné côté worker quoi que le client envoie ensuite. */
+export interface HpcWorkerCapabilities {
+  partitions: Record<string, HpcPartitionInfo>;
+  default_partition?: string | null;
+  max_cpus: number;
+  default_cpus_per_task: number;
+  max_mem_gb: number;
+  default_time_min_minutes: number;
+}
+
 export interface HpcWorker {
   worker_id: string;
   hostname: string;
   connected_at: string;
+  capabilities?: HpcWorkerCapabilities;
+}
+
+/** Choix du client pour le run (menu déroulant, replié par défaut) — tous champs optionnels,
+ *  absents -> défauts du worker (cf. HpcWorkerCapabilities). time_min_minutes seul est ajustable
+ *  pour la durée : le --time (max) réellement soumis vient toujours du MaxTime de la partition
+ *  choisie, jamais d'un choix client (cf. hpc_worker.py, resolve_job_resources). */
+export interface HpcResourcesRequest {
+  partition?: string;
+  cpus?: number;
+  mem_gb?: number;
+  time_min_minutes?: number;
 }
 
 export interface FamilyResultRow {
