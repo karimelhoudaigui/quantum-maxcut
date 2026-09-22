@@ -176,11 +176,11 @@ def evaluate_fixed_hybrid_sequence_on_graph(
         # total_duration_seconds = les deux ground_state (np.linalg.eigh,
         # notre code) + run_pulser_sequence (simulation qutip elle-même) :
         # c'est le temps réellement passé dans evaluate_smooth_pulser_final_state,
-        # pas seulement sa dernière étape (cf. pulser_smooth.py).
+        # pas seulement sa dernière étape (cf. pulser_smooth.py). Le détail
+        # des deux ground_state (~qq ms) n'est plus exposé séparément : run_pulser_sequence
+        # (intégration temporelle qutip) domine toujours largement (un seul appel, pas
+        # décomposable), donc le distinguer n'apportait pas d'info utile.
         "duration_seconds": float(pulser_out["total_duration_seconds"]),
-        "ground_state_qmc_duration_seconds": float(pulser_out["ground_state_qmc_duration_seconds"]),
-        "ground_state_r_duration_seconds": float(pulser_out["ground_state_r_duration_seconds"]),
-        "run_pulser_sequence_duration_seconds": float(pulser_out["duration_seconds"]),
         "magnetization_series": pulser_out["magnetization_series"],
     })
 
@@ -230,16 +230,6 @@ def evaluate_fixed_hybrid_sequence_on_graph(
             "pulser": float(pulser_out["total_duration_seconds"]),
             "sdp": float(hybrid_out["sdp_duration_seconds"]),
             "rounding": float(hybrid_out["rounding_duration_seconds"]),
-        },
-        # Détail du temps passé DANS la phase "pulser" (dont la somme fait
-        # phase_durations_seconds["pulser"]) : ground_state (notre code,
-        # np.linalg.eigh, en deux appels — qmc = Hamiltonien de référence,
-        # r = proxy Rydberg-XY) vs run_pulser_sequence (la simulation qutip
-        # elle-même) — pour savoir où agir en priorité pour l'accélérer.
-        "pulser_breakdown_seconds": {
-            "ground_state_qmc": float(pulser_out["ground_state_qmc_duration_seconds"]),
-            "ground_state_r": float(pulser_out["ground_state_r_duration_seconds"]),
-            "run_pulser_sequence": float(pulser_out["duration_seconds"]),
         },
         "magnetization_series": pulser_out["magnetization_series"],
         "rounding_trials_series": hybrid_out["rounding_trials_series"],

@@ -60,8 +60,6 @@ export interface PipelineStep {
   metric_label: string | null;
   metric_value: number | string | null;
   duration_seconds?: number;
-  /** Décomposition optionnelle de duration_seconds (ex. "pulser" : ground state vs simulation qutip). */
-  breakdown?: { label: string; seconds: number }[];
 }
 
 export interface PipelineJob {
@@ -88,12 +86,9 @@ export type HpcJobStatus =
 export interface HpcPhaseUpdate {
   phase: "setup" | "positions" | "pulser" | "sdp" | "rounding";
   completed_at: number;
-  /** Pour "pulser" : total = ground_state_qmc + ground_state_r + run_pulser_sequence (cf. les 3 champs ci-dessous). */
+  /** Pour "pulser" : inclut le temps de calcul du ground state (np.linalg.eigh × 2, négligeable en
+   *  pratique) en plus de la simulation qutip elle-même — cf. hybrid_graph_study.py, notify("pulser"). */
   duration_seconds: number;
-  /** Décomposition de la phase "pulser" uniquement (np.linalg.eigh × 2, puis la simulation qutip elle-même). */
-  ground_state_qmc_duration_seconds?: number;
-  ground_state_r_duration_seconds?: number;
-  run_pulser_sequence_duration_seconds?: number;
   magnetization_series?: { times: number[]; magnetization: number[][] } | null;
   rounding_trials_series?: { seed: number; ratio_product: number }[] | null;
 }
@@ -126,10 +121,13 @@ export interface HpcJob {
   finished_at?: string | null;
   progress?: HpcJobProgress | null;
   resources?: HpcJobResources | null;
-  /** Délai d'attente estimé par SLURM (squeue --start), en secondes depuis l'envoi de ce job_update,
-   *  tant que le job est "queued_slurm". Calculé côté worker (cf. hpc_worker.py) pour éviter tout
-   *  souci de fuseau horaire — jamais une heure absolue. null si SLURM n'a pas d'estimation. */
-  estimated_wait_seconds?: number | null;
+  /** Position du job dans la file d'attente de sa partition (1 = le prochain à démarrer) et
+   *  nombre total de jobs PENDING dans cette partition, tant que le job est "queued_slurm".
+   *  Calculé côté worker (cf. hpc_worker.py, get_queue_position) — remplace une estimation par
+   *  squeue --start abandonnée car inexploitable sur la partition preemptible de curta (N/A en
+   *  continu, le scheduler backfill ne peut rien garantir sur une partition préemptible). */
+  queue_position?: number | null;
+  queue_total?: number | null;
 }
 
 export interface HpcWorker {
