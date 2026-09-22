@@ -1,5 +1,5 @@
 import { Activity, Check, Cloud, Loader2, Square, X } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { usePipelineRunner } from "../hooks/usePipeline";
 import { buildInfo, formatBuildInfoDate } from "../lib/buildInfo";
@@ -189,10 +189,45 @@ export function PipelineRunner() {
               {hpcJob.result ? <ResultJson result={hpcJob.result} /> : null}
             </div>
           ) : null}
+          {hpcJob?.status === "queued_slurm" && hpcJob.estimated_start_time ? (
+            <EstimatedStartCountdown iso={hpcJob.estimated_start_time} />
+          ) : null}
           {hpcJob?.error ? <p className="mt-2 text-red-200">{hpcJob.error}</p> : null}
         </div>
       ) : null}
     </section>
+  );
+}
+
+// Estimation SLURM (squeue --start côté worker, cf. hpc_worker.py) tant que
+// le job est en file. Heure locale du cluster sans fuseau explicite : Date()
+// l'interprète comme heure locale du navigateur, ce qui n'est correct que si
+// les deux coïncident (indicatif, pas garanti). Ticke chaque seconde en
+// interne pour un compte à rebours fluide entre deux polls (hpcStatus
+// n'interroge le job que toutes les 3s).
+function EstimatedStartCountdown({ iso }: { iso: string }) {
+  const target = useMemo(() => new Date(iso).getTime(), [iso]);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  if (Number.isNaN(target)) return null;
+
+  const remainingSeconds = Math.max(0, Math.round((target - now) / 1000));
+  const label =
+    remainingSeconds <= 0
+      ? "starting any moment"
+      : remainingSeconds < 60
+        ? `~${remainingSeconds}s`
+        : `~${Math.floor(remainingSeconds / 60)}m ${(remainingSeconds % 60).toString().padStart(2, "0")}s`;
+
+  return (
+    <p className="mt-1 text-xs text-foreground/50" title="SLURM backfill estimate — indicative, not guaranteed">
+      Estimated start: {label}
+    </p>
   );
 }
 

@@ -119,6 +119,9 @@ export interface HpcJob {
   finished_at?: string | null;
   progress?: HpcJobProgress | null;
   resources?: HpcJobResources | null;
+  /** Estimation SLURM (squeue --start) de l'heure de démarrage, tant que le job est "queued_slurm".
+   *  Heure locale du cluster, sans fuseau explicite (limite connue, cf. worker/hpc_worker.py). */
+  estimated_start_time?: string | null;
 }
 
 export interface HpcWorker {
