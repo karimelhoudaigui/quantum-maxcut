@@ -3,7 +3,6 @@ import {
   BatteryCharging,
   BookOpen,
   BrainCircuit,
-  Building2,
   CircuitBoard,
   Code2,
   Cpu,
@@ -32,6 +31,7 @@ import type { ReactNode } from "react";
 const quantinaHeroPosterSrc = `${import.meta.env.BASE_URL}media/simulation-stack-poster.png`;
 const quantinaHeroVideoSrc = `${import.meta.env.BASE_URL}media/simulation-stack-4k.mp4`;
 const quantinaLogoSrc = `${import.meta.env.BASE_URL}media/brand/quantina-logo.png`;
+const maisonDuQuantiquePartnersSrc = `${import.meta.env.BASE_URL}media/brand/maison-du-quantique-partners.png`;
 
 interface QuantinaPageProps {
   onNavigate: (route: string) => void;
@@ -51,14 +51,6 @@ interface ProgramItem {
   title: string;
   text: string;
   icon: LucideIcon;
-}
-
-interface PlatformModule {
-  name: string;
-  status: "Available" | "In development" | "Coming soon" | "Research stage";
-  description: string;
-  tags: string[];
-  route?: string;
 }
 
 interface TeamMember {
@@ -163,51 +155,6 @@ const workflow = [
   "Industrialize",
 ];
 
-const platformModules: PlatformModule[] = [
-  {
-    name: "MaxCut",
-    status: "Available",
-    description: "Neutral-atom graph optimization demonstrator with configuration, execution and result analysis.",
-    tags: ["Optimization", "QAOA", "Graph theory"],
-    route: "/simulations/maxcut",
-  },
-  {
-    name: "ALD Simulation",
-    status: "In development",
-    description: "Atomic Layer Deposition workflows for materials modelling and quantum-enhanced simulation studies.",
-    tags: ["Materials", "Simulation", "Chemistry"],
-  },
-  {
-    name: "Satellite Scheduling",
-    status: "Coming soon",
-    description: "Mission planning and constrained resource allocation for space operations.",
-    tags: ["Scheduling", "Aerospace", "Optimization"],
-  },
-  {
-    name: "Battery Calibration",
-    status: "Coming soon",
-    description: "Calibration and design-space exploration for industrial battery systems.",
-    tags: ["Energy", "Surrogates", "Search"],
-  },
-  {
-    name: "CFD / Linear Solvers",
-    status: "Research stage",
-    description: "Feasibility studies around HPC baselines, reduced-order modelling and quantum linear solvers.",
-    tags: ["CFD", "HPC", "Linear systems"],
-  },
-];
-
-const partners = [
-  { name: "Maison du Quantique de Nouvelle-Aquitaine", role: "Regional coordination" },
-  { name: "HybQuant", role: "Engineering and applied research" },
-  { name: "LaBRI", role: "Computer science and algorithms" },
-  { name: "IMB", role: "Mathematics and modelling" },
-  { name: "XLIM", role: "Photonics, electronics and systems" },
-  { name: "LOMA", role: "Materials and physical modelling" },
-  { name: "Industrial partners", role: "Use cases and domain constraints" },
-  { name: "HPC / QPU infrastructures", role: "Simulation and execution resources" },
-];
-
 const deliverables: ProgramItem[] = [
   {
     title: "Technical reports",
@@ -273,8 +220,7 @@ export function QuantinaPage({ onNavigate }: QuantinaPageProps) {
       <ProjectSection />
       <UseCasesSection />
       <WorkflowSection />
-      <PlatformSection onNavigate={onNavigate} />
-      <PartnersSection />
+      <EcosystemSection />
       <DeliverablesSection />
       <JoinSection />
     </main>
@@ -313,8 +259,8 @@ function QuantinaHeader({ onNavigate }: QuantinaPageProps) {
           <a className="transition hover:text-primary" href="#method">
             Method
           </a>
-          <a className="transition hover:text-primary" href="#platform">
-            Platform
+          <a className="transition hover:text-primary" href="#ecosystem">
+            Ecosystem
           </a>
           <a className="transition hover:text-primary" href="#join">
             Join
@@ -813,64 +759,51 @@ function WorkflowSection() {
   );
 }
 
-function PlatformSection({ onNavigate }: QuantinaPageProps) {
+function EcosystemSection() {
   return (
-    <section id="platform" className="bg-[#0d1016] px-5 py-20 sm:px-8 lg:px-10">
+    <section id="ecosystem" className="bg-[#f4f7f8] px-5 py-20 text-[#091a2d] sm:px-8 lg:px-10">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-8 grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
-          <SectionIntro
-            eyebrow="Simulation platform"
-            title="QuantINA Simulation Platform"
-            text="The showcase connects directly to working demonstrators. MaxCut is available now, while ALD and industrial tracks can progressively become simulation modules."
-          />
-          <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
-            <button
-              type="button"
-              onClick={() => onNavigate("/")}
-              className="inline-flex items-center justify-center gap-2 rounded-md border border-white/15 bg-white/[0.055] px-4 py-3 text-sm font-semibold text-white transition hover:border-primary/45 hover:text-primary"
-            >
-              Open platform
-              <ExternalLink size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={() => onNavigate("/simulations/maxcut")}
-              className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-3 text-sm font-semibold text-background transition hover:opacity-90"
-            >
-              Open MaxCut demo
-              <ArrowRight size={16} />
-            </button>
+        <div className="grid gap-10 border-b border-[#0b2945]/15 pb-12 lg:grid-cols-[1.15fr_0.85fr] lg:items-end">
+          <div className="max-w-4xl">
+            <div className="mb-6 flex items-center gap-4">
+              <img className="h-14 w-14 object-contain" src={quantinaLogoSrc} alt="QuantINA" />
+              <div>
+                <p className="text-xs font-semibold uppercase text-[#ff4f74]">Led by the Maison du Quantique</p>
+                <p className="mt-1 text-sm font-medium text-[#37506a]">Nouvelle-Aquitaine quantum ecosystem</p>
+              </div>
+            </div>
+            <h2 className="max-w-4xl text-4xl font-semibold leading-tight text-[#071b30] sm:text-5xl">
+              QuantINA is carried by a regional network built for research, transfer and execution.
+            </h2>
           </div>
+          <p className="max-w-xl text-base leading-8 text-[#486078] lg:justify-self-end">
+            The Maison du Quantique brings together universities, national research organisations, laboratories, innovation networks and
+            computing infrastructures to turn industrial challenges into rigorous quantum and HPC projects.
+          </p>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-5">
-          {platformModules.map((module) => (
-            <PlatformModuleCard key={module.name} module={module} onNavigate={onNavigate} />
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function PartnersSection() {
-  return (
-    <section id="partners" className="px-5 py-20 sm:px-8 lg:px-10">
-      <div className="mx-auto max-w-7xl">
-        <SectionIntro
-          eyebrow="Partners"
-          title="A bridge between regional research capacity and industrial execution."
-          text="QuantINA is designed around a shared ecosystem: public research, engineering coordination, industrial problem owners and access to compute resources."
-        />
-
-        <div className="mt-8 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-          {partners.map((partner) => (
-            <div key={partner.name} className="rounded-md border border-white/10 bg-white/[0.04] p-4">
-              <Building2 size={18} className="text-primary" />
-              <h3 className="mt-4 text-sm font-semibold text-white">{partner.name}</h3>
-              <p className="mt-2 text-xs leading-5 text-foreground/52">{partner.role}</p>
+        <div className="grid gap-5 border-b border-[#0b2945]/15 py-8 sm:grid-cols-3">
+          {[
+            ["15", "institutions and research networks"],
+            ["1", "regional coordination hub"],
+            ["Research → industry", "a shared transfer pathway"],
+          ].map(([value, label]) => (
+            <div key={label} className="border-l-2 border-[#ff4f74] pl-4">
+              <p className="text-xl font-semibold text-[#071b30]">{value}</p>
+              <p className="mt-1 text-sm text-[#5c7084]">{label}</p>
             </div>
           ))}
+        </div>
+
+        <div className="pt-10">
+          <p className="mb-7 text-xs font-semibold uppercase text-[#5c7084]">The Maison du Quantique partner network</p>
+          <img
+            alt="Maison du Quantique partner institutions"
+            className="mx-auto block h-auto w-full max-w-[1120px] object-contain"
+            decoding="async"
+            loading="lazy"
+            src={maisonDuQuantiquePartnersSrc}
+          />
         </div>
       </div>
     </section>
@@ -1019,47 +952,5 @@ function ModelPillar({ icon: Icon, title, text }: { icon: LucideIcon; title: str
       <h3 className="mt-4 text-sm font-semibold text-white">{title}</h3>
       <p className="mt-2 text-xs leading-5 text-foreground/52">{text}</p>
     </div>
-  );
-}
-
-function PlatformModuleCard({ module, onNavigate }: { module: PlatformModule; onNavigate: (route: string) => void }) {
-  const isAvailable = module.status === "Available" && Boolean(module.route);
-  return (
-    <article
-      className={[
-        "flex min-h-64 flex-col justify-between rounded-md border p-4",
-        isAvailable ? "cursor-pointer border-primary/30 bg-primary/[0.08]" : "border-white/10 bg-white/[0.04]",
-      ].join(" ")}
-      onClick={() => {
-        if (isAvailable && module.route) {
-          onNavigate(module.route);
-        }
-      }}
-    >
-      <div>
-        <span
-          className={[
-            "rounded-md border px-2.5 py-1 text-xs font-semibold",
-            module.status === "Available"
-              ? "border-primary/35 bg-primary/10 text-primary"
-              : module.status === "In development"
-                ? "border-amber-300/30 bg-amber-300/10 text-amber-200"
-                : "border-white/10 bg-white/[0.045] text-foreground/48",
-          ].join(" ")}
-        >
-          {module.status}
-        </span>
-        <h3 className="mt-5 text-lg font-semibold text-white">{module.name}</h3>
-        <p className="mt-3 text-sm leading-6 text-foreground/58">{module.description}</p>
-      </div>
-
-      <div className="mt-5 flex flex-wrap gap-2">
-        {module.tags.map((tag) => (
-          <span key={tag} className="rounded-md border border-white/10 bg-black/15 px-2 py-1 text-xs text-foreground/50">
-            {tag}
-          </span>
-        ))}
-      </div>
-    </article>
   );
 }
