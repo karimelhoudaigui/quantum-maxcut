@@ -99,10 +99,15 @@ export default function App() {
               >
                 <ArrowLeft size={18} />
               </button>
-              <div className="min-w-0">
+              <button
+                type="button"
+                onClick={() => navigate("/")}
+                className="min-w-0 rounded-md text-left transition hover:opacity-80"
+                title="Back to simulations"
+              >
                 <p className="text-xs font-medium uppercase text-foreground/50">Production console</p>
                 <h1 className="truncate text-xl font-semibold sm:text-3xl">Neutral-atom MaxCut lab</h1>
-              </div>
+              </button>
             </div>
             <button
               type="button"
