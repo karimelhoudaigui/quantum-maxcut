@@ -117,7 +117,12 @@ export function PipelineRunner() {
                   : "Submit this configuration to hpc-bridge"
             }
           >
-            {hpcRun.isPending || hpcActive ? <Loader2 className="animate-spin" size={16} /> : <Cloud size={16} />}
+            {/* Spinner uniquement pendant la requête POST /api/jobs elle-même (avant
+                que hpcJob n'existe) : une fois le job soumis, le cadre "HPC job"
+                juste en dessous prend le relais avec son propre spinner
+                (hpcBoxIcon) tant qu'il est en file/en cours — un second spinner
+                ici tout du long serait redondant. */}
+            {hpcRun.isPending ? <Loader2 className="animate-spin" size={16} /> : <Cloud size={16} />}
             {hpcActive ? "Restart HPC" : "Run HPC"}
           </button>
           {hpcStoppable ? (
