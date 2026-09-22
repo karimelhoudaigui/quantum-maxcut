@@ -1,6 +1,5 @@
 import {
   ArrowRight,
-  Atom,
   BatteryCharging,
   BookOpen,
   BrainCircuit,
@@ -32,6 +31,7 @@ import type { ReactNode } from "react";
 
 const quantinaHeroPosterSrc = `${import.meta.env.BASE_URL}media/simulation-stack-poster.png`;
 const quantinaHeroVideoSrc = `${import.meta.env.BASE_URL}media/simulation-stack-4k.mp4`;
+const quantinaLogoSrc = `${import.meta.env.BASE_URL}media/brand/quantina-logo.png`;
 
 interface QuantinaPageProps {
   onNavigate: (route: string) => void;
@@ -242,18 +242,25 @@ const teamMembers: TeamMember[] = [
     photo: `${import.meta.env.BASE_URL}media/team/adrian-tanasa.jpg`,
   },
   {
-    name: "Audrey Durand",
-    role: "Regional Initiative Coordinator - Naquidis",
-    affiliation: "Institut d'Optique",
-    email: "audrey.durand@institutoptique.fr",
-    photo: `${import.meta.env.BASE_URL}media/team/audrey-durand.jpg`,
-  },
-  {
     name: "Karim El Houdaigui",
     role: "HYBQUANT Research Engineer",
     affiliation: "LaBRI",
     email: "karim.el-houdaigui@labri.fr",
     photo: `${import.meta.env.BASE_URL}media/team/karim-el-houdaigui.jpg`,
+  },
+  {
+    name: "Laurent Facq",
+    role: "Research Engineer",
+    affiliation: "LaBRI",
+    email: "Laurent.Facq@math.u-bordeaux.fr",
+    photo: `${import.meta.env.BASE_URL}media/team/laurent-facq.jpg`,
+  },
+  {
+    name: "Audrey Durand",
+    role: "Regional Initiative Coordinator - Naquidis",
+    affiliation: "Institut d'Optique",
+    email: "audrey.durand@institutoptique.fr",
+    photo: `${import.meta.env.BASE_URL}media/team/audrey-durand.jpg`,
   },
 ];
 
@@ -279,8 +286,8 @@ function QuantinaHeader({ onNavigate }: QuantinaPageProps) {
     <header className="fixed inset-x-0 top-0 z-50 px-5 pt-5 sm:px-8 sm:pt-7 lg:px-12">
       <div className="relative mx-auto flex max-w-7xl items-start justify-between gap-4">
         <a href="#top" className="flex min-w-0 items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-primary/35 bg-black/25 text-primary shadow-[0_0_34px_hsl(var(--primary)/0.22)] backdrop-blur-2xl">
-            <Atom size={21} />
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-white/12 bg-black/25 p-1 shadow-[0_0_34px_hsl(var(--primary)/0.22)] backdrop-blur-2xl">
+            <img alt="" aria-hidden="true" className="h-full w-full object-contain drop-shadow-[0_0_8px_rgba(255,79,116,0.32)]" src={quantinaLogoSrc} />
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-white">QuantINA</p>
