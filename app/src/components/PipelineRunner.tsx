@@ -249,6 +249,18 @@ const STEP_RESULT_METRIC_KEY: Record<PipelineStep["id"], string> = {
   rounding: "ratio_hybrid",
 };
 
+// Même métrique que STEP_RESULT_METRIC_KEY, mais lue depuis la notification de phase en direct
+// (HpcPhaseUpdate) plutôt que depuis le résultat final du job — pour afficher chaque valeur dès
+// que sa phase se termine, sans attendre que les 4/5 phases suivantes aient aussi fini. "setup" :
+// duration_seconds EST déjà la métrique affichée pour cette carte (pas de champ séparé).
+const STEP_LIVE_METRIC_KEY: Partial<Record<PipelineStep["id"], keyof HpcPhaseUpdate>> = {
+  setup: "duration_seconds",
+  geometry: "mapping_error",
+  pulser: "ratio_pulser",
+  sdp: "sdp_status",
+  rounding: "ratio_hybrid",
+};
+
 function hpcStepsFromProgress(
   phases: HpcPhaseUpdate[],
   jobStatus: string,
@@ -273,7 +285,9 @@ function hpcStepsFromProgress(
   return emptySteps.map((step, index) => {
     if (completedStepIds.has(step.id) || finalPhaseIds.has(step.id)) {
       const phase = phases.find((p) => HPC_PHASE_TO_STEP[p.phase] === step.id);
-      const metricValue = result?.[STEP_RESULT_METRIC_KEY[step.id]];
+      const liveMetricKey = STEP_LIVE_METRIC_KEY[step.id];
+      const liveMetricValue = phase && liveMetricKey ? phase[liveMetricKey] : undefined;
+      const metricValue = liveMetricValue ?? result?.[STEP_RESULT_METRIC_KEY[step.id]];
       const durationKey = step.id === "geometry" ? "positions" : step.id;
       const fallbackDuration = !phase && phaseDurations ? phaseDurations[durationKey] : undefined;
       return {

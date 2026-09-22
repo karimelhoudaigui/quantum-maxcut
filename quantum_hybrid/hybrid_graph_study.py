@@ -153,7 +153,7 @@ def evaluate_fixed_hybrid_sequence_on_graph(
         tol=tol,
     )
     positions_duration_seconds = time.perf_counter() - t_positions_start
-    notify("positions", {"duration_seconds": positions_duration_seconds})
+    notify("positions", {"duration_seconds": positions_duration_seconds, "mapping_error": float(mapping_error)})
 
     pulser_out = evaluate_smooth_pulser_final_state(
         n=n,
@@ -182,6 +182,7 @@ def evaluate_fixed_hybrid_sequence_on_graph(
         # décomposable), donc le distinguer n'apportait pas d'info utile.
         "duration_seconds": float(pulser_out["total_duration_seconds"]),
         "magnetization_series": pulser_out["magnetization_series"],
+        "ratio_pulser": float(pulser_out["ratio_pulser"]),
     })
 
     corrs = compute_edge_correlators(pulser_out["rho_T"], n, target_edges)
@@ -197,10 +198,14 @@ def evaluate_fixed_hybrid_sequence_on_graph(
         n_workers=n_workers,
         on_rounding_progress=on_rounding_progress,
     )
-    notify("sdp", {"duration_seconds": float(hybrid_out["sdp_duration_seconds"])})
+    notify("sdp", {
+        "duration_seconds": float(hybrid_out["sdp_duration_seconds"]),
+        "sdp_status": str(hybrid_out["sdp_status"]),
+    })
     notify("rounding", {
         "duration_seconds": float(hybrid_out["rounding_duration_seconds"]),
         "rounding_trials_series": hybrid_out["rounding_trials_series"],
+        "ratio_hybrid": float(hybrid_out["ratio_hybrid"]),
     })
 
     return {

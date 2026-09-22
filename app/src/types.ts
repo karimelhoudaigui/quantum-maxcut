@@ -91,6 +91,11 @@ export interface HpcPhaseUpdate {
   duration_seconds: number;
   magnetization_series?: { times: number[]; magnetization: number[][] } | null;
   rounding_trials_series?: { seed: number; ratio_product: number }[] | null;
+  /** Métrique propre à chaque phase, connue dès qu'elle se termine (pas seulement au résultat final). */
+  mapping_error?: number;
+  ratio_pulser?: number;
+  sdp_status?: string;
+  ratio_hybrid?: number;
 }
 
 export interface HpcRoundingProgress {
