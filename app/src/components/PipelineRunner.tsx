@@ -10,6 +10,25 @@ const HPC_STATUS_LABELS: Partial<Record<string, string>> = {
   queued_slurm: "queued on SLURM",
 };
 
+// Formate des minutes en libellé lisible : "45min", "3h30", "2j 4h" — la
+// granularité affichée s'adapte à l'ordre de grandeur (minutes seules en
+// dessous d'1h, heures:minutes en dessous d'1j, jours+heures au-delà)
+// plutôt que d'afficher un nombre de minutes à 4 chiffres.
+function formatMinutes(minutes: number): string {
+  const total = Math.round(minutes);
+  const days = Math.floor(total / (24 * 60));
+  const hours = Math.floor((total % (24 * 60)) / 60);
+  const mins = total % 60;
+
+  if (days > 0) {
+    return hours > 0 ? `${days}j ${hours}h` : `${days}j`;
+  }
+  if (hours > 0) {
+    return mins > 0 ? `${hours}h${String(mins).padStart(2, "0")}` : `${hours}h`;
+  }
+  return `${mins}min`;
+}
+
 const HPC_PHASE_TO_STEP: Record<HpcPhaseUpdate["phase"], PipelineStep["id"]> = {
   setup: "setup",
   positions: "geometry",
@@ -191,7 +210,7 @@ export function PipelineRunner() {
                   ? ` · ${hpcJob.resources.nodes} node${hpcJob.resources.nodes > 1 ? "s" : ""} · ${hpcJob.resources.cpus_per_task} cores${
                       hpcJob.resources.partition ? ` · partition ${hpcJob.resources.partition}` : ""
                     }${hpcJob.resources.mem_gb ? ` · ${hpcJob.resources.mem_gb}GB` : ""}${
-                      hpcJob.resources.time_min_minutes ? ` · time-min ${hpcJob.resources.time_min_minutes}min` : ""
+                      hpcJob.resources.time_min_minutes ? ` · time-min ${formatMinutes(hpcJob.resources.time_min_minutes)}` : ""
                     }`
                   : ""}
               </p>
@@ -235,6 +254,7 @@ function SliderField({
   min,
   max,
   suffix = "",
+  formatValue,
   onChange,
 }: {
   label: string;
@@ -242,16 +262,14 @@ function SliderField({
   min: number;
   max: number;
   suffix?: string;
+  formatValue?: (value: number) => string;
   onChange: (value: number) => void;
 }) {
   return (
     <label className="flex flex-col gap-1 text-xs text-foreground/60">
       <span className="flex items-center justify-between">
         <span>{label}</span>
-        <span className="font-mono text-foreground/80">
-          {value}
-          {suffix}
-        </span>
+        <span className="font-mono text-foreground/80">{formatValue ? formatValue(value) : `${value}${suffix}`}</span>
       </span>
       <input
         type="range"
@@ -337,10 +355,10 @@ function HpcResourceSettings({
         />
 
         <SliderField
-          label={`Min time${partitionInfo ? ` (partition max ${partitionInfo.max_time_raw})` : ""}`}
+          label={`Min time${partitionInfo?.max_time_minutes != null ? ` (partition max ${formatMinutes(partitionInfo.max_time_minutes)})` : ""}`}
           min={1}
           max={timeMinSliderMax}
-          suffix=" min"
+          formatValue={formatMinutes}
           value={resources.time_min_minutes ?? defaultTimeMin}
           onChange={(time_min_minutes) => onChange({ time_min_minutes })}
         />
