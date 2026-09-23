@@ -250,6 +250,7 @@ export function PipelineRunner() {
               total={hpcJob.queue_total ?? null}
               estimatedStart={hpcJob.estimated_start ?? null}
               estimatedStartPending={hpcJob.estimated_start_pending ?? false}
+              queuedSince={hpcJob.queued_since ?? null}
             />
           ) : null}
           {hpcJob?.error ? <p className="mt-2 text-red-200">{hpcJob.error}</p> : null}
@@ -259,6 +260,23 @@ export function PipelineRunner() {
   );
 }
 
+// Paliers du crescendo de couleur ci-dessous, en minutes d'attente dans la
+// queue (queuedSince) : sous 5min, texte neutre ; 5-10min jaune, 10-20min
+// orange, au-delà rouge — pour signaler visuellement qu'une attente sur la
+// partition preemptible s'éternise, avant même de savoir si/quand SLURM
+// fournira une estimation de démarrage.
+const QUEUE_WAIT_COLOR_STEPS: { afterMinutes: number; className: string }[] = [
+  { afterMinutes: 20, className: "text-red-400" },
+  { afterMinutes: 10, className: "text-orange-400" },
+  { afterMinutes: 5, className: "text-yellow-400" },
+];
+
+function queueWaitColorClassName(waitMinutes: number | null): string {
+  if (waitMinutes == null) return "text-foreground/70";
+  const step = QUEUE_WAIT_COLOR_STEPS.find((s) => waitMinutes >= s.afterMinutes);
+  return step?.className ?? "text-foreground/70";
+}
+
 // Rang du job dans la file d'attente de sa partition (cf. hpc_worker.py,
 // get_queue_position) tant qu'il reste "queued_slurm" : toujours disponible,
 // contrairement à l'heure de démarrage estimée par le scheduler backfill
@@ -266,17 +284,23 @@ export function PipelineRunner() {
 // donc --start renvoie systématiquement N/A pour un job tout juste soumis.
 // Le worker ne le sollicite qu'après ce délai (estimated_start_pending tombe
 // alors à false, avec ou sans estimation exploitable) : tant qu'on attend
-// encore ce premier essai, un spinner l'indique à côté du rang déjà connu.
+// encore ce premier essai, un spinner l'indique à côté du rang déjà connu —
+// et reste affiché même si une tentative échoue transitoirement (le worker
+// ne renvoie plus jamais estimated_start à null une fois obtenu, cf.
+// hpc_worker.py poll_slurm_state_until_running), pour ne jamais laisser un
+// trou muet entre le spinner et le compte à rebours.
 function QueuePosition({
   position,
   total,
   estimatedStart,
   estimatedStartPending,
+  queuedSince,
 }: {
   position: number;
   total: number | null;
   estimatedStart: string | null;
   estimatedStartPending: boolean;
+  queuedSince: string | null;
 }) {
   const label =
     position <= 1
@@ -285,9 +309,12 @@ function QueuePosition({
         ? `#${position} of ${total} pending`
         : `#${position} in queue`;
 
-  const now = useNow(estimatedStart != null);
+  const now = useNow(estimatedStart != null || queuedSince != null);
   const targetMs = estimatedStart ? new Date(estimatedStart).getTime() : null;
   const remainingSeconds = targetMs != null ? (targetMs - now) / 1000 : null;
+  const queuedSinceMs = queuedSince ? new Date(queuedSince).getTime() : null;
+  const waitMinutes = queuedSinceMs != null ? (now - queuedSinceMs) / 60000 : null;
+  const waitColorClassName = queueWaitColorClassName(waitMinutes);
 
   return (
     <p className="mt-1 flex items-center gap-1.5 text-xs text-foreground/50">
@@ -295,7 +322,7 @@ function QueuePosition({
         Queue position: {label}
       </span>
       {estimatedStart && targetMs != null && remainingSeconds != null ? (
-        <span className="text-foreground/70">
+        <span className={waitColorClassName}>
           ·{" "}
           {remainingSeconds > 0
             ? `starting in ${formatCountdown(remainingSeconds)}`
@@ -303,7 +330,7 @@ function QueuePosition({
           ({new Date(targetMs).toLocaleString()})
         </span>
       ) : estimatedStartPending ? (
-        <span className="inline-flex items-center gap-1">
+        <span className={`inline-flex items-center gap-1 ${waitColorClassName}`}>
           <Loader2 className="h-3 w-3 animate-spin" />
           estimating start time…
         </span>
