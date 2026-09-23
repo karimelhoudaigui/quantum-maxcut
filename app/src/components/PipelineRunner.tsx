@@ -281,11 +281,12 @@ export function PipelineRunner() {
   );
 }
 
-// Paliers du crescendo de couleur ci-dessous, en minutes d'attente dans la
-// queue (queuedSince) : sous 5min, texte neutre ; 5-10min jaune, 10-20min
-// orange, au-delà rouge — pour signaler visuellement qu'une attente sur la
-// partition preemptible s'éternise, avant même de savoir si/quand SLURM
-// fournira une estimation de démarrage.
+// Paliers du crescendo de couleur ci-dessous, en minutes d'attente : sous 5min, texte
+// neutre ; 5-10min jaune, 10-20min orange, au-delà rouge. Basé en priorité sur le temps
+// RESTANT estimé avant démarrage (le countdown lui-même : une estimation qui pointe vers
+// dans 1j doit être rouge tout de suite, même si le job vient tout juste d'être soumis),
+// avec repli sur le temps déjà écoulé dans la queue (queuedSince) tant qu'aucune
+// estimation n'est encore disponible (le spinner "estimating..." reste alors affiché).
 const QUEUE_WAIT_COLOR_STEPS: { afterMinutes: number; className: string }[] = [
   { afterMinutes: 20, className: "text-red-400" },
   { afterMinutes: 10, className: "text-orange-400" },
@@ -334,8 +335,9 @@ function QueuePosition({
   const targetMs = estimatedStart ? new Date(estimatedStart).getTime() : null;
   const remainingSeconds = targetMs != null ? (targetMs - now) / 1000 : null;
   const queuedSinceMs = queuedSince ? new Date(queuedSince).getTime() : null;
-  const waitMinutes = queuedSinceMs != null ? (now - queuedSinceMs) / 60000 : null;
-  const waitColorClassName = queueWaitColorClassName(waitMinutes);
+  const elapsedMinutes = queuedSinceMs != null ? (now - queuedSinceMs) / 60000 : null;
+  const remainingMinutes = remainingSeconds != null ? remainingSeconds / 60 : null;
+  const waitColorClassName = queueWaitColorClassName(remainingMinutes ?? elapsedMinutes);
 
   return (
     <div className="mt-1 flex items-center justify-between gap-3 text-xs text-foreground/50">
