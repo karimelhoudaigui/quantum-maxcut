@@ -218,7 +218,12 @@ export function PipelineRunner() {
             </div>
           ) : null}
           {hpcJob?.status === "queued_slurm" && hpcJob.queue_position != null ? (
-            <QueuePosition position={hpcJob.queue_position} total={hpcJob.queue_total ?? null} />
+            <QueuePosition
+              position={hpcJob.queue_position}
+              total={hpcJob.queue_total ?? null}
+              estimatedStart={hpcJob.estimated_start ?? null}
+              estimatedStartPending={hpcJob.estimated_start_pending ?? false}
+            />
           ) : null}
           {hpcJob?.error ? <p className="mt-2 text-red-200">{hpcJob.error}</p> : null}
         </div>
@@ -228,12 +233,24 @@ export function PipelineRunner() {
 }
 
 // Rang du job dans la file d'attente de sa partition (cf. hpc_worker.py,
-// get_queue_position) tant qu'il reste "queued_slurm". Remplace une première
-// version basée sur une heure de démarrage estimée par squeue --start,
-// abandonnée : sur la partition preemptible de curta, le scheduler backfill
-// ne fournit quasiment jamais d'estimation exploitable (N/A en continu),
-// alors que la position dans la file reste toujours calculable.
-function QueuePosition({ position, total }: { position: number; total: number | null }) {
+// get_queue_position) tant qu'il reste "queued_slurm" : toujours disponible,
+// contrairement à l'heure de démarrage estimée par le scheduler backfill
+// (squeue --start) — sur curta, ce dernier ne tourne que toutes les minutes,
+// donc --start renvoie systématiquement N/A pour un job tout juste soumis.
+// Le worker ne le sollicite qu'après ce délai (estimated_start_pending tombe
+// alors à false, avec ou sans estimation exploitable) : tant qu'on attend
+// encore ce premier essai, un spinner l'indique à côté du rang déjà connu.
+function QueuePosition({
+  position,
+  total,
+  estimatedStart,
+  estimatedStartPending,
+}: {
+  position: number;
+  total: number | null;
+  estimatedStart: string | null;
+  estimatedStartPending: boolean;
+}) {
   const label =
     position <= 1
       ? "next in queue"
@@ -242,8 +259,18 @@ function QueuePosition({ position, total }: { position: number; total: number | 
         : `#${position} in queue`;
 
   return (
-    <p className="mt-1 text-xs text-foreground/50" title="Rank among pending jobs on this partition — indicative, not a time estimate">
-      Queue position: {label}
+    <p className="mt-1 flex items-center gap-1.5 text-xs text-foreground/50">
+      <span title="Rank among pending jobs on this partition — indicative, not a time estimate">
+        Queue position: {label}
+      </span>
+      {estimatedStart ? (
+        <span className="text-foreground/70">· estimated start {new Date(estimatedStart).toLocaleString()}</span>
+      ) : estimatedStartPending ? (
+        <span className="inline-flex items-center gap-1">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          estimating start time…
+        </span>
+      ) : null}
     </p>
   );
 }

@@ -131,11 +131,17 @@ export interface HpcJob {
   resources?: HpcJobResources | null;
   /** Position du job dans la file d'attente de sa partition (1 = le prochain à démarrer) et
    *  nombre total de jobs PENDING dans cette partition, tant que le job est "queued_slurm".
-   *  Calculé côté worker (cf. hpc_worker.py, get_queue_position) — remplace une estimation par
-   *  squeue --start abandonnée car inexploitable sur la partition preemptible de curta (N/A en
-   *  continu, le scheduler backfill ne peut rien garantir sur une partition préemptible). */
+   *  Calculé côté worker (cf. hpc_worker.py, get_queue_position) — toujours disponible, contrairement
+   *  à estimated_start ci-dessous. */
   queue_position?: number | null;
   queue_total?: number | null;
+  /** Heure de démarrage estimée par le scheduler backfill SLURM (ISO, cf. hpc_worker.py
+   *  get_estimated_start), ou null si pas encore disponible. Sur curta, squeue --start renvoie
+   *  systématiquement N/A pour un job tout juste soumis : le backfill ne tourne que toutes les
+   *  minutes, donc le worker ne le sollicite qu'après ESTIMATED_START_RETRY_SECONDS (60s) — avant
+   *  ce délai, estimated_start_pending vaut true (pas encore tenté) plutôt que "tenté, indisponible". */
+  estimated_start?: string | null;
+  estimated_start_pending?: boolean;
 }
 
 export interface HpcPartitionInfo {
