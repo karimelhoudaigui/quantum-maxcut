@@ -250,7 +250,11 @@ export function PipelineRunner() {
               total={hpcJob.queue_total ?? null}
               estimatedStart={hpcJob.estimated_start ?? null}
               estimatedStartPending={hpcJob.estimated_start_pending ?? false}
-              queuedSince={hpcJob.queued_since ?? null}
+              // created_at (fixé par sl_server.py dès la création du job) sert de repère de
+              // repli si queued_since manque encore (ancien worker pas redémarré depuis son
+              // ajout) — moins précis (inclut aussi l'attente avant dispatch à un worker),
+              // mais évite que le crescendo de couleur reste bloqué au neutre indéfiniment.
+              queuedSince={hpcJob.queued_since ?? hpcJob.created_at ?? null}
             />
           ) : null}
           {hpcJob?.error ? <p className="mt-2 text-red-200">{hpcJob.error}</p> : null}
@@ -317,25 +321,27 @@ function QueuePosition({
   const waitColorClassName = queueWaitColorClassName(waitMinutes);
 
   return (
-    <p className="mt-1 flex items-center gap-1.5 text-xs text-foreground/50">
-      <span title="Rank among pending jobs on this partition — indicative, not a time estimate">
-        Queue position: {label}
+    <div className="mt-1 flex items-center justify-between gap-3 text-xs text-foreground/50">
+      <span className="flex items-center gap-1.5">
+        <span title="Rank among pending jobs on this partition — indicative, not a time estimate">
+          Queue position: {label}
+        </span>
+        {estimatedStart && targetMs != null && remainingSeconds != null ? (
+          <span className={waitColorClassName}>
+            ·{" "}
+            <span className="font-bold">
+              {remainingSeconds > 0 ? `starting in ${formatCountdown(remainingSeconds)}` : "starting any moment"}
+            </span>
+          </span>
+        ) : estimatedStartPending ? (
+          <span className={`inline-flex items-center gap-1 ${waitColorClassName}`}>
+            <Loader2 className="h-3 w-3 animate-spin" />
+            estimating start time…
+          </span>
+        ) : null}
       </span>
-      {estimatedStart && targetMs != null && remainingSeconds != null ? (
-        <span className={waitColorClassName}>
-          ·{" "}
-          {remainingSeconds > 0
-            ? `starting in ${formatCountdown(remainingSeconds)}`
-            : "starting any moment"}{" "}
-          ({new Date(targetMs).toLocaleString()})
-        </span>
-      ) : estimatedStartPending ? (
-        <span className={`inline-flex items-center gap-1 ${waitColorClassName}`}>
-          <Loader2 className="h-3 w-3 animate-spin" />
-          estimating start time…
-        </span>
-      ) : null}
-    </p>
+      {targetMs != null ? <span className={waitColorClassName}>{new Date(targetMs).toLocaleString()}</span> : null}
+    </div>
   );
 }
 
