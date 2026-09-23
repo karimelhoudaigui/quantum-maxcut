@@ -153,7 +153,7 @@ def evaluate_fixed_hybrid_sequence_on_graph(
         tol=tol,
     )
     positions_duration_seconds = time.perf_counter() - t_positions_start
-    notify("positions", {"duration_seconds": positions_duration_seconds})
+    notify("positions", {"duration_seconds": positions_duration_seconds, "mapping_error": float(mapping_error)})
 
     pulser_out = evaluate_smooth_pulser_final_state(
         n=n,
@@ -173,13 +173,16 @@ def evaluate_fixed_hybrid_sequence_on_graph(
         enable_animations=enable_animations,
     )
     notify("pulser", {
-        "duration_seconds": float(pulser_out["duration_seconds"]),
-        # Détail pour diagnostiquer ce qui domine dans la phase "pulser" :
-        # ground_state (np.linalg.eigh, notre code) vs run_pulser_sequence
-        # (simulation qutip elle-même, déjà couverte par duration_seconds).
-        "ground_state_qmc_duration_seconds": float(pulser_out["ground_state_qmc_duration_seconds"]),
-        "ground_state_r_duration_seconds": float(pulser_out["ground_state_r_duration_seconds"]),
+        # total_duration_seconds = les deux ground_state (np.linalg.eigh,
+        # notre code) + run_pulser_sequence (simulation qutip elle-même) :
+        # c'est le temps réellement passé dans evaluate_smooth_pulser_final_state,
+        # pas seulement sa dernière étape (cf. pulser_smooth.py). Le détail
+        # des deux ground_state (~qq ms) n'est plus exposé séparément : run_pulser_sequence
+        # (intégration temporelle qutip) domine toujours largement (un seul appel, pas
+        # décomposable), donc le distinguer n'apportait pas d'info utile.
+        "duration_seconds": float(pulser_out["total_duration_seconds"]),
         "magnetization_series": pulser_out["magnetization_series"],
+        "ratio_pulser": float(pulser_out["ratio_pulser"]),
     })
 
     corrs = compute_edge_correlators(pulser_out["rho_T"], n, target_edges)
@@ -195,10 +198,14 @@ def evaluate_fixed_hybrid_sequence_on_graph(
         n_workers=n_workers,
         on_rounding_progress=on_rounding_progress,
     )
-    notify("sdp", {"duration_seconds": float(hybrid_out["sdp_duration_seconds"])})
+    notify("sdp", {
+        "duration_seconds": float(hybrid_out["sdp_duration_seconds"]),
+        "sdp_status": str(hybrid_out["sdp_status"]),
+    })
     notify("rounding", {
         "duration_seconds": float(hybrid_out["rounding_duration_seconds"]),
         "rounding_trials_series": hybrid_out["rounding_trials_series"],
+        "ratio_hybrid": float(hybrid_out["ratio_hybrid"]),
     })
 
     return {
@@ -225,18 +232,9 @@ def evaluate_fixed_hybrid_sequence_on_graph(
         "cut_assignment_value": float(hybrid_out["cut_assignment_value"]),
         "phase_durations_seconds": {
             "positions": positions_duration_seconds,
-            "pulser": float(pulser_out["duration_seconds"]),
+            "pulser": float(pulser_out["total_duration_seconds"]),
             "sdp": float(hybrid_out["sdp_duration_seconds"]),
             "rounding": float(hybrid_out["rounding_duration_seconds"]),
-        },
-        # Détail du temps passé DANS la phase "pulser" : ground_state (notre
-        # code, np.linalg.eigh) vs run_pulser_sequence (la simulation qutip
-        # elle-même, = phase_durations_seconds["pulser"] moins ces deux
-        # durées) — pour savoir où agir en priorité pour l'accélérer.
-        "pulser_breakdown_seconds": {
-            "ground_state_qmc": float(pulser_out["ground_state_qmc_duration_seconds"]),
-            "ground_state_r": float(pulser_out["ground_state_r_duration_seconds"]),
-            "run_pulser_sequence": float(pulser_out["duration_seconds"]),
         },
         "magnetization_series": pulser_out["magnetization_series"],
         "rounding_trials_series": hybrid_out["rounding_trials_series"],

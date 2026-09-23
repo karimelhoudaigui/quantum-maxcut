@@ -41,6 +41,7 @@ export function usePipelineRunner() {
   const hpcJob = usePipelineStore((state) => state.hpcJob);
   const annealing = usePipelineStore((state) => state.annealing);
   const enableAnimations = usePipelineStore((state) => state.enableAnimations);
+  const hpcResources = usePipelineStore((state) => state.hpcResources);
   const setJob = usePipelineStore((state) => state.setJob);
   const setHpcJob = usePipelineStore((state) => state.setHpcJob);
 
@@ -66,7 +67,7 @@ export function usePipelineRunner() {
       if (hpcJob && HPC_ACTIVE_STATUSES.includes(hpcJob.status)) {
         await cancelHpcJob(hpcJob.job_id).catch(() => undefined);
       }
-      return runHpcPipeline(config, annealing, enableAnimations);
+      return runHpcPipeline(config, annealing, enableAnimations, hpcResources);
     },
     onMutate: () => setHpcJob(null),
     onSuccess: setHpcJob,

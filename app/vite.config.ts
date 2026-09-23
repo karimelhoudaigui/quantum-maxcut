@@ -36,7 +36,18 @@ export default defineConfig(({ mode }) => {
     base,
     plugins: [react()],
     define: {
-      __BUILD_INFO__: JSON.stringify(buildInfo),
+      // Vite `define` fait une substitution textuelle brute : la valeur ici
+      // remplace __BUILD_INFO__ telle quelle dans le code, sans guillemets
+      // ajoutés. Un seul JSON.stringify(buildInfo) produit donc un objet
+      // JS littéral collé dans le bundle (ex. __BUILD_INFO__ devient
+      // {commitHash:"...",...}), pas une chaîne — buildInfo.ts fait ensuite
+      // JSON.parse(__BUILD_INFO__), qui reçoit cet objet au lieu d'une
+      // chaîne, échoue silencieusement (catch -> fallback "unknown"), d'où
+      // le badge bloqué sur "unknown" quel que soit le contenu réel du
+      // build. Double stringify : le premier sérialise buildInfo en JSON,
+      // le second entoure CE JSON de guillemets pour que la substitution
+      // produise une vraie chaîne JS que JSON.parse peut réellement parser.
+      __BUILD_INFO__: JSON.stringify(JSON.stringify(buildInfo)),
     },
     server: {
       port: 5173,

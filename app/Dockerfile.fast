@@ -1,0 +1,54 @@
+# Build applicatif rapide, utilisé par le BuildConfig OpenShift
+# quantum-maxcut-frontend : BASE_IMAGE (build-arg, cf.
+# openshift/quantum-frontend-buildconfig.yaml, dockerStrategy.buildArgs)
+# pointe vers quantum-maxcut-frontend-base:latest (node_modules déjà
+# installés, cf. Dockerfile.base) — `npm install` ci-dessous n'a alors
+# presque rien à faire (contrairement à `npm ci`, qui réinstallerait tout à
+# chaque fois) : c'est l'essentiel du gain de vitesse pour la grosse
+# majorité des commits, qui ne touchent que le code de l'appli, pas les
+# dépendances.
+#
+# Robuste par construction à une base absente, périmée ou incomplète (image
+# jamais construite, dépendance ajoutée sans avoir reconstruit la base,
+# BASE_IMAGE non fourni...) : `npm install` (pas `npm ci`) complète/répare
+# node_modules par rapport à l'existant plutôt que de partir d'un état
+# supposé déjà correct — plus lent dans ce cas (proportionnel à ce qui
+# manque, jusqu'à un install complet équivalent à Dockerfile.base si
+# node_modules est absent), mais jamais en échec pour cette raison. Seul
+# vrai compromis : `npm install` est légèrement moins strict que `npm ci`
+# sur la reproductibilité exacte du lockfile (peut le mettre à jour en cas
+# de dérive) — acceptable ici puisque c'est justement le filet de sécurité
+# du cas courant, pas la source de vérité (Dockerfile.base/Dockerfile
+# restent sur `npm ci`).
+#
+# Conséquence : reconstruire quantum-maxcut-frontend-base après un ajout de
+# dépendance n'est plus une nécessité de correction, juste une optimisation
+# de vitesse pour les builds suivants — à faire quand ça devient utile
+# (plusieurs dépendances accumulées), pas à chaque changement de
+# package.json. Le trigger ImageChange du BuildConfig continue de relancer
+# ce build-ci automatiquement quand la base est reconstruite.
+#
+# ARG explicite (BASE_IMAGE) plutôt que dockerStrategy.from (dans le YAML
+# du BuildConfig, essayé d'abord) : dockerStrategy.from est censé remplacer
+# automatiquement le FROM d'un Dockerfile, mais ne l'a pas fait de façon
+# fiable en conditions réelles sur ce Dockerfile multi-stage. Un ARG est un
+# mécanisme Docker standard, garanti, indépendant de la version d'OpenShift.
+ARG BASE_IMAGE=node:20-alpine
+FROM ${BASE_IMAGE} AS build
+
+# cf. Dockerfile pour le détail de ces ARG (identique, non dupliqué ici).
+ARG GIT_COMMIT=""
+ARG GIT_COMMIT_DATE=""
+ARG OPENSHIFT_BUILD_COMMIT=""
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN VITE_COMMIT_HASH="${GIT_COMMIT:-$OPENSHIFT_BUILD_COMMIT}" VITE_COMMIT_DATE="$GIT_COMMIT_DATE" \
+    npm run build -- --base /
+
+FROM nginxinc/nginx-unprivileged:1.27-alpine
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist /usr/share/nginx/html
+EXPOSE 8080

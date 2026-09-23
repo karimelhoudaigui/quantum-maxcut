@@ -1,0 +1,11 @@
+# Dépendances npm seules (node_modules), sans le code de l'appli : sert de
+# point de départ à Dockerfile.fast pour la grosse majorité des builds
+# OpenShift (quantum-maxcut-frontend), qui ne changent que le code applicatif
+# et n'ont donc pas besoin de refaire `npm ci` (l'essentiel du temps de
+# build). À reconstruire manuellement (oc start-build
+# quantum-maxcut-frontend-base) uniquement quand package.json ou
+# package-lock.json changent — cf. README, section OpenShift.
+FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci

@@ -1,10 +1,10 @@
 import { Activity, Check, Cloud, Loader2, Square, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { usePipelineRunner } from "../hooks/usePipeline";
 import { buildInfo, formatBuildInfoDate } from "../lib/buildInfo";
 import { usePipelineStore } from "../stores/pipelineStore";
-import type { HpcJobStatus, HpcPhaseUpdate, HpcRoundingProgress, PipelineStep } from "../types";
+import type { HpcJobStatus, HpcPhaseUpdate, HpcResourcesRequest, HpcRoundingProgress, HpcWorkerCapabilities, PipelineStep } from "../types";
 
 const HPC_STATUS_LABELS: Partial<Record<string, string>> = {
   queued_slurm: "queued on SLURM",
@@ -55,7 +55,12 @@ export function PipelineRunner() {
   const graph = usePipelineStore((state) => state.graph);
   const job = usePipelineStore((state) => state.job);
   const hpcJob = usePipelineStore((state) => state.hpcJob);
+  const hpcResources = usePipelineStore((state) => state.hpcResources);
+  const setHpcResources = usePipelineStore((state) => state.setHpcResources);
   const { run, hpcRun, hpcStop, workers } = usePipelineRunner();
+  // Un seul worker attendu en pratique (POC) — cf. dispatch_to_worker côté SL, qui prend déjà
+  // le premier worker connecté sans faire de choix ; on affiche donc ses capacités telles quelles.
+  const workerCapabilities = workers.data?.[0]?.capabilities;
   const hpcActive = hpcJob && !["done", "error", "cancelled"].includes(hpcJob.status);
   const hpcStoppable = hpcActive && hpcJob.status !== "cancelling";
   const hpcBoxStatus: PipelineStep["status"] = hpcJob ? hpcJobToStepStatus(hpcJob.status) : hpcRun.error ? "failed" : "pending";
@@ -147,6 +152,8 @@ export function PipelineRunner() {
         </p>
       ) : null}
 
+      <HpcResourceSettings capabilities={workerCapabilities} resources={hpcResources} onChange={setHpcResources} />
+
       <div className="mb-4 h-2 overflow-hidden rounded-full bg-background">
         <div className="h-full bg-primary transition-all duration-500" style={{ width: `${job?.progress ?? 0}%` }} />
       </div>
@@ -182,14 +189,16 @@ export function PipelineRunner() {
                 {hpcJob.resources
                   ? ` · ${hpcJob.resources.nodes} node${hpcJob.resources.nodes > 1 ? "s" : ""} · ${hpcJob.resources.cpus_per_task} cores${
                       hpcJob.resources.partition ? ` · partition ${hpcJob.resources.partition}` : ""
+                    }${hpcJob.resources.mem_gb ? ` · ${hpcJob.resources.mem_gb}GB` : ""}${
+                      hpcJob.resources.time_min_minutes ? ` · time-min ${hpcJob.resources.time_min_minutes}min` : ""
                     }`
                   : ""}
               </p>
               {hpcJob.result ? <ResultJson result={hpcJob.result} /> : null}
             </div>
           ) : null}
-          {hpcJob?.status === "queued_slurm" && hpcJob.estimated_start_time ? (
-            <EstimatedStartCountdown iso={hpcJob.estimated_start_time} />
+          {hpcJob?.status === "queued_slurm" && hpcJob.queue_position != null ? (
+            <QueuePosition position={hpcJob.queue_position} total={hpcJob.queue_total ?? null} />
           ) : null}
           {hpcJob?.error ? <p className="mt-2 text-red-200">{hpcJob.error}</p> : null}
         </div>
@@ -198,35 +207,144 @@ export function PipelineRunner() {
   );
 }
 
-// Estimation SLURM (squeue --start côté worker, cf. hpc_worker.py) tant que
-// le job est en file. Heure locale du cluster sans fuseau explicite : Date()
-// l'interprète comme heure locale du navigateur, ce qui n'est correct que si
-// les deux coïncident (indicatif, pas garanti). Ticke chaque seconde en
-// interne pour un compte à rebours fluide entre deux polls (hpcStatus
-// n'interroge le job que toutes les 3s).
-function EstimatedStartCountdown({ iso }: { iso: string }) {
-  const target = useMemo(() => new Date(iso).getTime(), [iso]);
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, []);
-
-  if (Number.isNaN(target)) return null;
-
-  const remainingSeconds = Math.max(0, Math.round((target - now) / 1000));
+// Rang du job dans la file d'attente de sa partition (cf. hpc_worker.py,
+// get_queue_position) tant qu'il reste "queued_slurm". Remplace une première
+// version basée sur une heure de démarrage estimée par squeue --start,
+// abandonnée : sur la partition preemptible de curta, le scheduler backfill
+// ne fournit quasiment jamais d'estimation exploitable (N/A en continu),
+// alors que la position dans la file reste toujours calculable.
+function QueuePosition({ position, total }: { position: number; total: number | null }) {
   const label =
-    remainingSeconds <= 0
-      ? "starting any moment"
-      : remainingSeconds < 60
-        ? `~${remainingSeconds}s`
-        : `~${Math.floor(remainingSeconds / 60)}m ${(remainingSeconds % 60).toString().padStart(2, "0")}s`;
+    position <= 1
+      ? "next in queue"
+      : total != null
+        ? `#${position} of ${total} pending`
+        : `#${position} in queue`;
 
   return (
-    <p className="mt-1 text-xs text-foreground/50" title="SLURM backfill estimate — indicative, not guaranteed">
-      Estimated start: {label}
+    <p className="mt-1 text-xs text-foreground/50" title="Rank among pending jobs on this partition — indicative, not a time estimate">
+      Queue position: {label}
     </p>
+  );
+}
+
+function SliderField({
+  label,
+  value,
+  min,
+  max,
+  suffix = "",
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  suffix?: string;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="flex flex-col gap-1 text-xs text-foreground/60">
+      <span className="flex items-center justify-between">
+        <span>{label}</span>
+        <span className="font-mono text-foreground/80">
+          {value}
+          {suffix}
+        </span>
+      </span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        value={Math.min(Math.max(value, min), max)}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="accent-primary"
+      />
+    </label>
+  );
+}
+
+// Menu de paramétrage du run HPC, replié par défaut (élément <details> natif,
+// même pattern que ResultJson ci-dessous) : les bornes (partitions proposées,
+// cœurs/mémoire max, temps max par partition) viennent de ce que le worker
+// connecté a annoncé à sa connexion (cf. hpc_worker.py WorkerConfig/register,
+// sl_server.py Worker.capabilities) — un client ne peut jamais les dépasser,
+// quoi qu'il envoie ici (revérifié côté worker, cf. resolve_job_resources).
+function HpcResourceSettings({
+  capabilities,
+  resources,
+  onChange,
+}: {
+  capabilities: HpcWorkerCapabilities | undefined;
+  resources: HpcResourcesRequest;
+  onChange: (patch: Partial<HpcResourcesRequest>) => void;
+}) {
+  const partitionNames = useMemo(
+    () => (capabilities ? Object.keys(capabilities.partitions).sort() : []),
+    [capabilities],
+  );
+  const selectedPartition = resources.partition ?? capabilities?.default_partition ?? partitionNames[0];
+  const partitionInfo = selectedPartition ? capabilities?.partitions[selectedPartition] : undefined;
+  const maxCpus = capabilities?.max_cpus ?? 32;
+  const maxMemGb = capabilities?.max_mem_gb ?? 0;
+  // Le worker peut annoncer "pas de plafond configuré" (max_mem_gb=0, cf.
+  // --max-mem-gb) : un slider a quand même besoin d'une borne finie pour être
+  // utilisable, 128 Go sert alors de repère purement indicatif côté UI — le
+  // worker, lui, n'appliquera aucun plafond réel dans ce cas (cf. resolve_job_resources).
+  const memSliderMax = maxMemGb > 0 ? maxMemGb : 128;
+  const defaultTimeMin = capabilities?.default_time_min_minutes ?? 20;
+  const timeMinSliderMax = partitionInfo?.max_time_minutes ?? 1440;
+
+  return (
+    <details className="mb-4 rounded-md border border-border bg-background/60">
+      <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium text-foreground/60 hover:text-foreground">
+        Job resources{selectedPartition ? ` (${selectedPartition})` : ""}
+      </summary>
+      <div className="grid gap-3 border-t border-border p-3 sm:grid-cols-2 lg:grid-cols-4">
+        <label className="flex flex-col gap-1 text-xs text-foreground/60">
+          Partition
+          <select
+            value={selectedPartition ?? ""}
+            disabled={partitionNames.length === 0}
+            onChange={(e) => onChange({ partition: e.target.value })}
+            className="rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground disabled:opacity-50"
+          >
+            {partitionNames.length === 0 ? <option value="">(none advertised)</option> : null}
+            {partitionNames.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <SliderField
+          label="Cores"
+          min={1}
+          max={maxCpus}
+          value={resources.cpus ?? capabilities?.default_cpus_per_task ?? 8}
+          onChange={(cpus) => onChange({ cpus })}
+        />
+
+        <SliderField
+          label={`Memory (0 = auto${maxMemGb <= 0 ? ", no server-side cap" : ""})`}
+          min={0}
+          max={memSliderMax}
+          suffix=" GB"
+          value={resources.mem_gb ?? 0}
+          onChange={(mem_gb) => onChange({ mem_gb })}
+        />
+
+        <SliderField
+          label={`Min time${partitionInfo ? ` (partition max ${partitionInfo.max_time_raw})` : ""}`}
+          min={1}
+          max={timeMinSliderMax}
+          suffix=" min"
+          value={resources.time_min_minutes ?? defaultTimeMin}
+          onChange={(time_min_minutes) => onChange({ time_min_minutes })}
+        />
+      </div>
+    </details>
   );
 }
 
@@ -259,6 +377,18 @@ const STEP_RESULT_METRIC_KEY: Record<PipelineStep["id"], string> = {
   rounding: "ratio_hybrid",
 };
 
+// Même métrique que STEP_RESULT_METRIC_KEY, mais lue depuis la notification de phase en direct
+// (HpcPhaseUpdate) plutôt que depuis le résultat final du job — pour afficher chaque valeur dès
+// que sa phase se termine, sans attendre que les 4/5 phases suivantes aient aussi fini. "setup" :
+// duration_seconds EST déjà la métrique affichée pour cette carte (pas de champ séparé).
+const STEP_LIVE_METRIC_KEY: Partial<Record<PipelineStep["id"], keyof HpcPhaseUpdate>> = {
+  setup: "duration_seconds",
+  geometry: "mapping_error",
+  pulser: "ratio_pulser",
+  sdp: "sdp_status",
+  rounding: "ratio_hybrid",
+};
+
 function hpcStepsFromProgress(
   phases: HpcPhaseUpdate[],
   jobStatus: string,
@@ -283,7 +413,9 @@ function hpcStepsFromProgress(
   return emptySteps.map((step, index) => {
     if (completedStepIds.has(step.id) || finalPhaseIds.has(step.id)) {
       const phase = phases.find((p) => HPC_PHASE_TO_STEP[p.phase] === step.id);
-      const metricValue = result?.[STEP_RESULT_METRIC_KEY[step.id]];
+      const liveMetricKey = STEP_LIVE_METRIC_KEY[step.id];
+      const liveMetricValue = phase && liveMetricKey ? phase[liveMetricKey] : undefined;
+      const metricValue = liveMetricValue ?? result?.[STEP_RESULT_METRIC_KEY[step.id]];
       const durationKey = step.id === "geometry" ? "positions" : step.id;
       const fallbackDuration = !phase && phaseDurations ? phaseDurations[durationKey] : undefined;
       return {

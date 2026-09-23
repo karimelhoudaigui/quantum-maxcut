@@ -4,6 +4,7 @@ import type {
   GraphGenerateRequest,
   GraphResponse,
   HpcJob,
+  HpcResourcesRequest,
   HpcWorker,
   PipelineJob,
 } from "../types";
@@ -105,6 +106,7 @@ export async function runHpcPipeline(
   config: GraphGenerateRequest,
   annealing: AnnealingConfig,
   enableAnimations: boolean,
+  resources?: HpcResourcesRequest,
 ): Promise<HpcJob> {
   return request<HpcJob>("/api/jobs", {
     baseUrl: HPC_BRIDGE_URL,
@@ -123,6 +125,7 @@ export async function runHpcPipeline(
       annealing,
       seed: 1234,
       enable_animations: enableAnimations,
+      resources,
     }),
   });
 }

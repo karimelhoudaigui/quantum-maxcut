@@ -148,9 +148,16 @@ def evaluate_smooth_pulser_final_state(
         "ratio_proxy_exact": ratio_proxy_exact,
         "ratio_pulser": ratio_pulser,
         "overlap_proxy": overlap_proxy,
+        # duration_seconds ne couvre que run_pulser_sequence (la simulation
+        # qutip elle-même) ; total_duration_seconds y ajoute les deux
+        # ground_state (np.linalg.eigh, calculés avant que ce chrono ne
+        # démarre) — c'est ce total qu'expose la phase "pulser" côté UI,
+        # pour que sa durée affichée reflète tout le temps réellement passé
+        # dans cette fonction, pas seulement sa dernière étape.
         "duration_seconds": duration_seconds,
         "ground_state_qmc_duration_seconds": ground_state_qmc_duration_seconds,
         "ground_state_r_duration_seconds": ground_state_r_duration_seconds,
+        "total_duration_seconds": ground_state_qmc_duration_seconds + ground_state_r_duration_seconds + duration_seconds,
         "magnetization_series": magnetization_series,
     }
 
