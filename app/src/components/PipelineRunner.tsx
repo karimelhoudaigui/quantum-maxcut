@@ -10,6 +10,16 @@ const HPC_STATUS_LABELS: Partial<Record<string, string>> = {
   queued_slurm: "queued on SLURM",
 };
 
+// buildInfo (cf. lib/buildInfo.ts) vient de vite.config.ts, calculé une seule fois au
+// démarrage du process `npm run dev` — figé sur le commit d'alors tant que ce process
+// tourne, même après des dizaines de HMR reloads (peut afficher un commit vieux de
+// plusieurs jours si `npm run dev` n'a pas été relancé depuis). MODULE_LOAD_TIME, lui,
+// est réévalué à chaque HMR de ce module précis (PipelineRunner.tsx est justement le
+// fichier modifié à chaque itération) : en dev, on l'affiche à la place de buildInfo,
+// qui n'a de sens qu'en build de production (npm run build, un seul process, une seule
+// exécution du module).
+const MODULE_LOAD_TIME = new Date();
+
 // Formate des minutes en libellé lisible : "45min", "3h30", "2j 4h" — la
 // granularité affichée s'adapte à l'ordre de grandeur (minutes seules en
 // dessous d'1h, heures:minutes en dessous d'1j, jours+heures au-delà)
@@ -140,9 +150,15 @@ export function PipelineRunner() {
           <p className="text-xl font-semibold">Method: Hybrid Quantum Optimizer HybQuant</p>
           <p
             className="mt-1 font-mono text-[11px] text-foreground/40"
-            title={`Build: ${formatBuildInfoDate(buildInfo.buildDate)}\nCommit: ${buildInfo.commitHash}\nCommit date: ${formatBuildInfoDate(buildInfo.commitDate)}`}
+            title={
+              import.meta.env.DEV
+                ? "Dev server (npm run dev) : reflects the last HMR reload of this file, not the buildInfo commit/date (frozen at dev server startup)."
+                : `Build: ${formatBuildInfoDate(buildInfo.buildDate)}\nCommit: ${buildInfo.commitHash}\nCommit date: ${formatBuildInfoDate(buildInfo.commitDate)}`
+            }
           >
-            build {formatBuildInfoDate(buildInfo.buildDate)} · commit {buildInfo.commitHash} ({formatBuildInfoDate(buildInfo.commitDate)})
+            {import.meta.env.DEV
+              ? `dev server · UI updated ${MODULE_LOAD_TIME.toLocaleString()}`
+              : `build ${formatBuildInfoDate(buildInfo.buildDate)} · commit ${buildInfo.commitHash} (${formatBuildInfoDate(buildInfo.commitDate)})`}
           </p>
         </div>
         <button
@@ -327,8 +343,8 @@ function QueuePosition({
           Queue position: {label}
         </span>
         {estimatedStart && targetMs != null && remainingSeconds != null ? (
-          <span className={waitColorClassName}>
-            ·{" "}
+          <span className={waitColorClassName} title="Estimated by SLURM's backfill scheduler — not a guarantee">
+            · estimated{" "}
             <span className="font-bold">
               {remainingSeconds > 0 ? `starting in ${formatCountdown(remainingSeconds)}` : "starting any moment"}
             </span>
@@ -340,7 +356,11 @@ function QueuePosition({
           </span>
         ) : null}
       </span>
-      {targetMs != null ? <span className={waitColorClassName}>{new Date(targetMs).toLocaleString()}</span> : null}
+      {targetMs != null ? (
+        <span className={waitColorClassName} title="Estimated by SLURM's backfill scheduler — not a guarantee">
+          est. {new Date(targetMs).toLocaleString()}
+        </span>
+      ) : null}
     </div>
   );
 }
