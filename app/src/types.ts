@@ -83,6 +83,17 @@ export type HpcJobStatus =
   | "error"
   | "cancelled";
 
+/** Seuls statuts finaux (cf. sl_server.py TERMINAL_STATUSES) — tout le reste est "actif"
+ *  (job encore suivi côté hpc-bridge, à annuler avant d'en soumettre un autre). Dérivé en
+ *  négatif plutôt qu'énuméré positivement : une liste positive dupliquée (HPC_ACTIVE_STATUSES)
+ *  a par le passé oublié "queued_slurm" et "cancelling", laissant "Restart HPC" soumettre un
+ *  nouveau job sans annuler celui encore en file SLURM. */
+export const HPC_TERMINAL_STATUSES: readonly HpcJobStatus[] = ["done", "error", "cancelled"];
+
+export function isHpcJobActive(status: HpcJobStatus): boolean {
+  return !HPC_TERMINAL_STATUSES.includes(status);
+}
+
 export interface HpcPhaseUpdate {
   phase: "setup" | "positions" | "pulser" | "sdp" | "rounding";
   completed_at: number;

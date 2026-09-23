@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePipelineRunner } from "../hooks/usePipeline";
 import { buildInfo, formatBuildInfoDate } from "../lib/buildInfo";
 import { usePipelineStore } from "../stores/pipelineStore";
+import { isHpcJobActive } from "../types";
 import type { HpcJobStatus, HpcPhaseUpdate, HpcResourcesRequest, HpcRoundingProgress, HpcWorkerCapabilities, PipelineStep } from "../types";
 
 const HPC_STATUS_LABELS: Partial<Record<string, string>> = {
@@ -118,7 +119,7 @@ export function PipelineRunner() {
   // Un seul worker attendu en pratique (POC) — cf. dispatch_to_worker côté SL, qui prend déjà
   // le premier worker connecté sans faire de choix ; on affiche donc ses capacités telles quelles.
   const workerCapabilities = workers.data?.[0]?.capabilities;
-  const hpcActive = hpcJob && !["done", "error", "cancelled"].includes(hpcJob.status);
+  const hpcActive = hpcJob && isHpcJobActive(hpcJob.status);
   const hpcStoppable = hpcActive && hpcJob.status !== "cancelling";
   const hpcBoxStatus: PipelineStep["status"] = hpcJob ? hpcJobToStepStatus(hpcJob.status) : hpcRun.error ? "failed" : "pending";
 

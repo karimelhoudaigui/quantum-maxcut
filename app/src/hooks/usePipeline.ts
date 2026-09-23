@@ -12,8 +12,7 @@ import {
   runPipeline,
 } from "../lib/api";
 import { usePipelineStore } from "../stores/pipelineStore";
-
-const HPC_ACTIVE_STATUSES = ["queued", "waiting_for_worker", "dispatched", "submitting", "running"];
+import { isHpcJobActive } from "../types";
 
 export function useGraphGeneration() {
   const config = usePipelineStore((state) => state.config);
@@ -64,7 +63,7 @@ export function usePipelineRunner() {
 
   const hpcRun = useMutation({
     mutationFn: async () => {
-      if (hpcJob && HPC_ACTIVE_STATUSES.includes(hpcJob.status)) {
+      if (hpcJob && isHpcJobActive(hpcJob.status)) {
         await cancelHpcJob(hpcJob.job_id).catch(() => undefined);
       }
       return runHpcPipeline(config, annealing, enableAnimations, hpcResources);
@@ -76,7 +75,7 @@ export function usePipelineRunner() {
   const hpcStatus = useQuery({
     queryKey: ["hpc-job-status", hpcJob?.job_id],
     queryFn: () => getHpcJob(hpcJob?.job_id ?? ""),
-    enabled: Boolean(hpcJob?.job_id) && !["done", "error", "cancelled"].includes(hpcJob?.status ?? ""),
+    enabled: Boolean(hpcJob?.job_id) && Boolean(hpcJob && isHpcJobActive(hpcJob.status)),
     refetchInterval: 3000,
   });
 
