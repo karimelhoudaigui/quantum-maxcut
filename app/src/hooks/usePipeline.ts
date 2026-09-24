@@ -63,12 +63,19 @@ export function usePipelineRunner() {
 
   const hpcRun = useMutation({
     mutationFn: async () => {
+      // Même mécanisme d'annulation que le bouton "Stop" (hpcStop ci-dessous, cf.
+      // cancelHpcJob) : on attend son résultat et on laisse une erreur remonter
+      // (hpcRun.error) plutôt que de l'avaler et d'effacer hpcJob par avance (onMutate).
+      // Avec l'ancien code, un cancelHpcJob resté sans effet (par ex. avalé par
+      // .catch(() => undefined)) laissait le job précédent tourner sur SLURM tout en
+      // rendant hpcJob déjà null pour le clic suivant, sans plus jamais pouvoir le
+      // cibler — trois clics rapprochés sur "Restart HPC" ont ainsi laissé trois jobs
+      // orphelins actifs simultanément sur SLURM (observé en prod, cf. /api/jobs).
       if (hpcJob && isHpcJobActive(hpcJob.status)) {
-        await cancelHpcJob(hpcJob.job_id).catch(() => undefined);
+        await cancelHpcJob(hpcJob.job_id);
       }
       return runHpcPipeline(config, annealing, enableAnimations, hpcResources);
     },
-    onMutate: () => setHpcJob(null),
     onSuccess: setHpcJob,
   });
 
