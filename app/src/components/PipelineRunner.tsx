@@ -1,5 +1,5 @@
 import { Activity, Atom, Check, Cloud, Loader2, Square, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { usePipelineRunner } from "../hooks/usePipeline";
 import { buildInfo, formatBuildInfoDate } from "../lib/buildInfo";
@@ -121,6 +121,14 @@ export function PipelineRunner() {
   const workerCapabilities = workers.data?.[0]?.capabilities;
   const hpcActive = hpcJob && isHpcJobActive(hpcJob.status);
   const hpcStoppable = hpcActive && hpcJob.status !== "cancelling";
+  // Verrou synchrone, à part de hpcRun.isPending : entre le clic physique et le
+  // re-render qui applique disabled={hpcRun.isPending}, React (et donc l'état React
+  // Query) n'a pas encore eu la main — un second clic assez rapide peut passer avant
+  // que le bouton soit visuellement/effectivement désactivé. hpcRunLockRef, lu et posé
+  // de façon synchrone dans onClick (avant tout re-render), ferme cette fenêtre : deux
+  // clics rapprochés sur "Restart HPC" ont par le passé soumis un second job avant que
+  // l'annulation du premier ait pu être déclenchée, laissant un job orphelin sur SLURM.
+  const hpcRunLockRef = useRef(false);
   const hpcBoxStatus: PipelineStep["status"] = hpcJob ? hpcJobToStepStatus(hpcJob.status) : hpcRun.error ? "failed" : "pending";
 
   // workers.isSuccess : on ne sait rien de la disponibilité du cluster tant
@@ -177,7 +185,11 @@ export function PipelineRunner() {
             <button
               type="button"
               disabled={!graph || hpcRun.isPending || clusterUnavailable}
-              onClick={() => hpcRun.mutate()}
+              onClick={() => {
+                if (hpcRunLockRef.current) return;
+                hpcRunLockRef.current = true;
+                hpcRun.mutate(undefined, { onSettled: () => (hpcRunLockRef.current = false) });
+              }}
               className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-45"
               title={
                 clusterUnavailable
