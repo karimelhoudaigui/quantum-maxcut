@@ -1,4 +1,4 @@
-import { Activity, Check, Cloud, Loader2, Square, X } from "lucide-react";
+import { Activity, Atom, Check, Cloud, Loader2, Square, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { usePipelineRunner } from "../hooks/usePipeline";
@@ -109,6 +109,7 @@ function hpcBoxIcon(jobStatus: HpcJobStatus | undefined, submissionFailed: boole
 }
 
 export function PipelineRunner() {
+  const [qpuNoticeVisible, setQpuNoticeVisible] = useState(false);
   const graph = usePipelineStore((state) => state.graph);
   const job = usePipelineStore((state) => state.job);
   const hpcJob = usePipelineStore((state) => state.hpcJob);
@@ -144,8 +145,8 @@ export function PipelineRunner() {
 
   return (
     <section className="rounded-md border border-border bg-muted/25 p-4 shadow-panel">
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <div>
+      <div className="mb-4">
+        <div className="min-w-0">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/60">Pipeline</h2>
           <p className="text-xl font-semibold">Method: Hybrid Quantum Optimizer HybQuant</p>
           <p
@@ -161,49 +162,63 @@ export function PipelineRunner() {
               : `build ${formatBuildInfoDate(buildInfo.buildDate)} · commit ${buildInfo.commitHash} (${formatBuildInfoDate(buildInfo.commitDate)})`}
           </p>
         </div>
-        <button
-          type="button"
-          disabled={!graph || run.isPending || job?.status === "running" || job?.status === "queued"}
-          onClick={() => run.mutate()}
-          className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
-        >
-          {run.isPending || job?.status === "running" ? <Loader2 className="animate-spin" size={16} /> : <Activity size={16} />}
-          Run
-        </button>
-        <div className="flex items-stretch overflow-hidden rounded-md border border-primary/60">
+        <div className="mt-4 flex flex-wrap items-stretch gap-2">
           <button
             type="button"
-            disabled={!graph || hpcRun.isPending || clusterUnavailable}
-            onClick={() => hpcRun.mutate()}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-45"
-            title={
-              clusterUnavailable
-                ? "No HPC worker connected to hpc-bridge — start hpc_worker.py on the cluster"
-                : hpcActive
-                  ? "Cancel the running HPC job and submit this configuration instead"
-                  : "Submit this configuration to hpc-bridge"
-            }
+            disabled={!graph || run.isPending || job?.status === "running" || job?.status === "queued"}
+            onClick={() => run.mutate()}
+            className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
           >
-            {/* Spinner uniquement pendant la requête POST /api/jobs elle-même (avant
-                que hpcJob n'existe) : une fois le job soumis, le cadre "HPC job"
-                juste en dessous prend le relais avec son propre spinner
-                (hpcBoxIcon) tant qu'il est en file/en cours — un second spinner
-                ici tout du long serait redondant. */}
-            {hpcRun.isPending ? <Loader2 className="animate-spin" size={16} /> : <Cloud size={16} />}
-            {hpcActive ? "Restart HPC" : "Run HPC"}
+            {run.isPending || job?.status === "running" ? <Loader2 className="animate-spin" size={16} /> : <Activity size={16} />}
+            Run
           </button>
-          {hpcStoppable ? (
+
+          <div className="flex items-stretch overflow-hidden rounded-md border border-primary/60">
             <button
               type="button"
-              disabled={hpcStop.isPending}
-              onClick={() => hpcStop.mutate()}
-              className="flex items-center gap-2 border-l border-primary/60 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-45"
-              title="Stop the running HPC job without submitting a new one"
+              disabled={!graph || hpcRun.isPending || clusterUnavailable}
+              onClick={() => hpcRun.mutate()}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-45"
+              title={
+                clusterUnavailable
+                  ? "No HPC worker connected to hpc-bridge — start hpc_worker.py on the cluster"
+                  : hpcActive
+                    ? "Cancel the running HPC job and submit this configuration instead"
+                    : "Submit this configuration to hpc-bridge"
+              }
             >
-              {hpcStop.isPending ? <Loader2 className="animate-spin" size={16} /> : <Square size={16} />}
-              Stop
+              {/* Spinner uniquement pendant la requête POST /api/jobs elle-même (avant
+                  que hpcJob n'existe) : une fois le job soumis, le cadre "HPC job"
+                  juste en dessous prend le relais avec son propre spinner
+                  (hpcBoxIcon) tant qu'il est en file/en cours — un second spinner
+                  ici tout du long serait redondant. */}
+              {hpcRun.isPending ? <Loader2 className="animate-spin" size={16} /> : <Cloud size={16} />}
+              {hpcActive ? "Restart HPC" : "Run HPC"}
             </button>
-          ) : null}
+            {hpcStoppable ? (
+              <button
+                type="button"
+                disabled={hpcStop.isPending}
+                onClick={() => hpcStop.mutate()}
+                className="flex items-center gap-2 border-l border-primary/60 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-45"
+                title="Stop the running HPC job without submitting a new one"
+              >
+                {hpcStop.isPending ? <Loader2 className="animate-spin" size={16} /> : <Square size={16} />}
+                Stop
+              </button>
+            ) : null}
+          </div>
+
+          <button
+            type="button"
+            disabled={!graph}
+            onClick={() => setQpuNoticeVisible(true)}
+            className="flex items-center gap-2 rounded-md border border-cyan-300/45 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-300/15 disabled:cursor-not-allowed disabled:opacity-40"
+            title={graph ? "Prepare this configuration for quantum hardware" : "Generate a graph before preparing a QPU run"}
+          >
+            <Atom size={16} />
+            Run QPU
+          </button>
         </div>
       </div>
 
@@ -216,6 +231,35 @@ export function PipelineRunner() {
       ) : null}
 
       <HpcResourceSettings capabilities={workerCapabilities} resources={hpcResources} onChange={setHpcResources} />
+
+      {qpuNoticeVisible ? (
+        <div
+          id="qpu-integration-status"
+          className="mb-4 rounded-md border border-cyan-300/30 bg-cyan-300/[0.07] p-3 text-sm"
+          role="status"
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex min-w-0 items-start gap-3">
+              <Atom className="mt-0.5 shrink-0 text-cyan-200" size={18} />
+              <div>
+                <p className="font-semibold text-cyan-100">QPU pipeline ready for integration</p>
+                <p className="mt-1 text-foreground/65">
+                  The current graph and annealing configuration will be submitted to quantum hardware once the QPU provider connector is configured.
+                </p>
+                <p className="mt-2 font-mono text-xs text-foreground/45">Provider: not configured · Submission: unavailable</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setQpuNoticeVisible(false)}
+              className="shrink-0 rounded-md border border-cyan-300/25 p-1.5 text-cyan-100/70 transition hover:bg-cyan-300/10 hover:text-cyan-50"
+              title="Close QPU status"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <div className="mb-4 h-2 overflow-hidden rounded-full bg-background">
         <div className="h-full bg-primary transition-all duration-500" style={{ width: `${job?.progress ?? 0}%` }} />
