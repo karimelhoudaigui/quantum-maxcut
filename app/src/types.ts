@@ -83,6 +83,17 @@ export type HpcJobStatus =
   | "error"
   | "cancelled";
 
+/** Seuls statuts finaux (cf. sl_server.py TERMINAL_STATUSES) — tout le reste est "actif"
+ *  (job encore suivi côté hpc-bridge, à annuler avant d'en soumettre un autre). Dérivé en
+ *  négatif plutôt qu'énuméré positivement : une liste positive dupliquée (HPC_ACTIVE_STATUSES)
+ *  a par le passé oublié "queued_slurm" et "cancelling", laissant "Restart HPC" soumettre un
+ *  nouveau job sans annuler celui encore en file SLURM. */
+export const HPC_TERMINAL_STATUSES: readonly HpcJobStatus[] = ["done", "error", "cancelled"];
+
+export function isHpcJobActive(status: HpcJobStatus): boolean {
+  return !HPC_TERMINAL_STATUSES.includes(status);
+}
+
 export interface HpcPhaseUpdate {
   phase: "setup" | "positions" | "pulser" | "sdp" | "rounding";
   completed_at: number;
@@ -131,11 +142,21 @@ export interface HpcJob {
   resources?: HpcJobResources | null;
   /** Position du job dans la file d'attente de sa partition (1 = le prochain à démarrer) et
    *  nombre total de jobs PENDING dans cette partition, tant que le job est "queued_slurm".
-   *  Calculé côté worker (cf. hpc_worker.py, get_queue_position) — remplace une estimation par
-   *  squeue --start abandonnée car inexploitable sur la partition preemptible de curta (N/A en
-   *  continu, le scheduler backfill ne peut rien garantir sur une partition préemptible). */
+   *  Calculé côté worker (cf. hpc_worker.py, get_queue_position) — toujours disponible, contrairement
+   *  à estimated_start ci-dessous. */
   queue_position?: number | null;
   queue_total?: number | null;
+  /** Heure de démarrage estimée par le scheduler backfill SLURM (ISO, cf. hpc_worker.py
+   *  get_estimated_start), ou null si pas encore disponible. Une fois obtenue, le worker ne la
+   *  réinitialise plus jamais à null (squeue --start peut redevenir N/A transitoirement) — ne
+   *  disparaît donc jamais côté front une fois apparue. estimated_start_pending distingue "pas
+   *  encore tenté" (true) de "tenté, resterait indisponible" (false, estimated_start toujours null). */
+  estimated_start?: string | null;
+  estimated_start_pending?: boolean;
+  /** Depuis quand le job est en file SLURM (ISO, fixé une fois par le worker au moment où il
+   *  commence à suivre le job) — repère indépendant de estimated_start pour mesurer une attente
+   *  anormalement longue même si aucune estimation de démarrage n'a jamais pu être obtenue. */
+  queued_since?: string | null;
 }
 
 export interface HpcPartitionInfo {

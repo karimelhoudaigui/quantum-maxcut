@@ -1,14 +1,71 @@
 import { Activity, Check, Cloud, Loader2, Square, X } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { usePipelineRunner } from "../hooks/usePipeline";
 import { buildInfo, formatBuildInfoDate } from "../lib/buildInfo";
 import { usePipelineStore } from "../stores/pipelineStore";
+import { isHpcJobActive } from "../types";
 import type { HpcJobStatus, HpcPhaseUpdate, HpcResourcesRequest, HpcRoundingProgress, HpcWorkerCapabilities, PipelineStep } from "../types";
 
 const HPC_STATUS_LABELS: Partial<Record<string, string>> = {
   queued_slurm: "queued on SLURM",
 };
+
+// buildInfo (cf. lib/buildInfo.ts) vient de vite.config.ts, calculé une seule fois au
+// démarrage du process `npm run dev` — figé sur le commit d'alors tant que ce process
+// tourne, même après des dizaines de HMR reloads (peut afficher un commit vieux de
+// plusieurs jours si `npm run dev` n'a pas été relancé depuis). MODULE_LOAD_TIME, lui,
+// est réévalué à chaque HMR de ce module précis (PipelineRunner.tsx est justement le
+// fichier modifié à chaque itération) : en dev, on l'affiche à la place de buildInfo,
+// qui n'a de sens qu'en build de production (npm run build, un seul process, une seule
+// exécution du module).
+const MODULE_LOAD_TIME = new Date();
+
+// Formate des minutes en libellé lisible : "45min", "3h30", "2j 4h" — la
+// granularité affichée s'adapte à l'ordre de grandeur (minutes seules en
+// dessous d'1h, heures:minutes en dessous d'1j, jours+heures au-delà)
+// plutôt que d'afficher un nombre de minutes à 4 chiffres.
+function formatMinutes(minutes: number): string {
+  const total = Math.round(minutes);
+  const days = Math.floor(total / (24 * 60));
+  const hours = Math.floor((total % (24 * 60)) / 60);
+  const mins = total % 60;
+
+  if (days > 0) {
+    return hours > 0 ? `${days}j ${hours}h` : `${days}j`;
+  }
+  if (hours > 0) {
+    return mins > 0 ? `${hours}h${String(mins).padStart(2, "0")}` : `${hours}h`;
+  }
+  return `${mins}min`;
+}
+
+// Compte à rebours "mm:ss" / "hh:mm:ss" / "Nj hh:mm:ss" jusqu'à `target` (Date) —
+// même logique de granularité que formatMinutes mais avec les secondes, utiles ici
+// puisque la valeur défile en direct plutôt que d'être lue une fois.
+function formatCountdown(remainingSeconds: number): string {
+  const total = Math.max(0, Math.round(remainingSeconds));
+  const days = Math.floor(total / (24 * 3600));
+  const hours = Math.floor((total % (24 * 3600)) / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  const hhmmss = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  if (days > 0) return `${days}j ${hhmmss}`;
+  if (hours > 0) return hhmmss;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+// Tick à la seconde tant que `active` — sert à recalculer un compte à rebours en
+// direct sans dépendre de la fréquence des job_update reçus du worker (~3s).
+function useNow(active: boolean): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!active) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [active]);
+  return now;
+}
 
 const HPC_PHASE_TO_STEP: Record<HpcPhaseUpdate["phase"], PipelineStep["id"]> = {
   setup: "setup",
@@ -61,7 +118,7 @@ export function PipelineRunner() {
   // Un seul worker attendu en pratique (POC) — cf. dispatch_to_worker côté SL, qui prend déjà
   // le premier worker connecté sans faire de choix ; on affiche donc ses capacités telles quelles.
   const workerCapabilities = workers.data?.[0]?.capabilities;
-  const hpcActive = hpcJob && !["done", "error", "cancelled"].includes(hpcJob.status);
+  const hpcActive = hpcJob && isHpcJobActive(hpcJob.status);
   const hpcStoppable = hpcActive && hpcJob.status !== "cancelling";
   const hpcBoxStatus: PipelineStep["status"] = hpcJob ? hpcJobToStepStatus(hpcJob.status) : hpcRun.error ? "failed" : "pending";
 
@@ -93,9 +150,15 @@ export function PipelineRunner() {
           <p className="text-xl font-semibold">Method: Hybrid Quantum Optimizer HybQuant</p>
           <p
             className="mt-1 font-mono text-[11px] text-foreground/40"
-            title={`Build: ${formatBuildInfoDate(buildInfo.buildDate)}\nCommit: ${buildInfo.commitHash}\nCommit date: ${formatBuildInfoDate(buildInfo.commitDate)}`}
+            title={
+              import.meta.env.DEV
+                ? "Dev server (npm run dev) : reflects the last HMR reload of this file, not the buildInfo commit/date (frozen at dev server startup)."
+                : `Build: ${formatBuildInfoDate(buildInfo.buildDate)}\nCommit: ${buildInfo.commitHash}\nCommit date: ${formatBuildInfoDate(buildInfo.commitDate)}`
+            }
           >
-            build {formatBuildInfoDate(buildInfo.buildDate)} · commit {buildInfo.commitHash} ({formatBuildInfoDate(buildInfo.commitDate)})
+            {import.meta.env.DEV
+              ? `dev server · UI updated ${MODULE_LOAD_TIME.toLocaleString()}`
+              : `build ${formatBuildInfoDate(buildInfo.buildDate)} · commit ${buildInfo.commitHash} (${formatBuildInfoDate(buildInfo.commitDate)})`}
           </p>
         </div>
         <button
@@ -190,7 +253,7 @@ export function PipelineRunner() {
                   ? ` · ${hpcJob.resources.nodes} node${hpcJob.resources.nodes > 1 ? "s" : ""} · ${hpcJob.resources.cpus_per_task} cores${
                       hpcJob.resources.partition ? ` · partition ${hpcJob.resources.partition}` : ""
                     }${hpcJob.resources.mem_gb ? ` · ${hpcJob.resources.mem_gb}GB` : ""}${
-                      hpcJob.resources.time_min_minutes ? ` · time-min ${hpcJob.resources.time_min_minutes}min` : ""
+                      hpcJob.resources.time_min_minutes ? ` · time-min ${formatMinutes(hpcJob.resources.time_min_minutes)}` : ""
                     }`
                   : ""}
               </p>
@@ -198,7 +261,17 @@ export function PipelineRunner() {
             </div>
           ) : null}
           {hpcJob?.status === "queued_slurm" && hpcJob.queue_position != null ? (
-            <QueuePosition position={hpcJob.queue_position} total={hpcJob.queue_total ?? null} />
+            <QueuePosition
+              position={hpcJob.queue_position}
+              total={hpcJob.queue_total ?? null}
+              estimatedStart={hpcJob.estimated_start ?? null}
+              estimatedStartPending={hpcJob.estimated_start_pending ?? false}
+              // created_at (fixé par sl_server.py dès la création du job) sert de repère de
+              // repli si queued_since manque encore (ancien worker pas redémarré depuis son
+              // ajout) — moins précis (inclut aussi l'attente avant dispatch à un worker),
+              // mais évite que le crescendo de couleur reste bloqué au neutre indéfiniment.
+              queuedSince={hpcJob.queued_since ?? hpcJob.created_at ?? null}
+            />
           ) : null}
           {hpcJob?.error ? <p className="mt-2 text-red-200">{hpcJob.error}</p> : null}
         </div>
@@ -207,13 +280,49 @@ export function PipelineRunner() {
   );
 }
 
+// Paliers du crescendo de couleur ci-dessous, en minutes d'attente : sous 5min, texte
+// neutre ; 5-10min jaune, 10-20min orange, au-delà rouge. Basé en priorité sur le temps
+// RESTANT estimé avant démarrage (le countdown lui-même : une estimation qui pointe vers
+// dans 1j doit être rouge tout de suite, même si le job vient tout juste d'être soumis),
+// avec repli sur le temps déjà écoulé dans la queue (queuedSince) tant qu'aucune
+// estimation n'est encore disponible (le spinner "estimating..." reste alors affiché).
+const QUEUE_WAIT_COLOR_STEPS: { afterMinutes: number; className: string }[] = [
+  { afterMinutes: 20, className: "text-red-400" },
+  { afterMinutes: 10, className: "text-orange-400" },
+  { afterMinutes: 5, className: "text-yellow-400" },
+];
+
+function queueWaitColorClassName(waitMinutes: number | null): string {
+  if (waitMinutes == null) return "text-foreground/70";
+  const step = QUEUE_WAIT_COLOR_STEPS.find((s) => waitMinutes >= s.afterMinutes);
+  return step?.className ?? "text-foreground/70";
+}
+
 // Rang du job dans la file d'attente de sa partition (cf. hpc_worker.py,
-// get_queue_position) tant qu'il reste "queued_slurm". Remplace une première
-// version basée sur une heure de démarrage estimée par squeue --start,
-// abandonnée : sur la partition preemptible de curta, le scheduler backfill
-// ne fournit quasiment jamais d'estimation exploitable (N/A en continu),
-// alors que la position dans la file reste toujours calculable.
-function QueuePosition({ position, total }: { position: number; total: number | null }) {
+// get_queue_position) tant qu'il reste "queued_slurm" : toujours disponible,
+// contrairement à l'heure de démarrage estimée par le scheduler backfill
+// (squeue --start) — sur curta, ce dernier ne tourne que toutes les minutes,
+// donc --start renvoie systématiquement N/A pour un job tout juste soumis.
+// Le worker ne le sollicite qu'après ce délai (estimated_start_pending tombe
+// alors à false, avec ou sans estimation exploitable) : tant qu'on attend
+// encore ce premier essai, un spinner l'indique à côté du rang déjà connu —
+// et reste affiché même si une tentative échoue transitoirement (le worker
+// ne renvoie plus jamais estimated_start à null une fois obtenu, cf.
+// hpc_worker.py poll_slurm_state_until_running), pour ne jamais laisser un
+// trou muet entre le spinner et le compte à rebours.
+function QueuePosition({
+  position,
+  total,
+  estimatedStart,
+  estimatedStartPending,
+  queuedSince,
+}: {
+  position: number;
+  total: number | null;
+  estimatedStart: string | null;
+  estimatedStartPending: boolean;
+  queuedSince: string | null;
+}) {
   const label =
     position <= 1
       ? "next in queue"
@@ -221,10 +330,40 @@ function QueuePosition({ position, total }: { position: number; total: number | 
         ? `#${position} of ${total} pending`
         : `#${position} in queue`;
 
+  const now = useNow(estimatedStart != null || queuedSince != null);
+  const targetMs = estimatedStart ? new Date(estimatedStart).getTime() : null;
+  const remainingSeconds = targetMs != null ? (targetMs - now) / 1000 : null;
+  const queuedSinceMs = queuedSince ? new Date(queuedSince).getTime() : null;
+  const elapsedMinutes = queuedSinceMs != null ? (now - queuedSinceMs) / 60000 : null;
+  const remainingMinutes = remainingSeconds != null ? remainingSeconds / 60 : null;
+  const waitColorClassName = queueWaitColorClassName(remainingMinutes ?? elapsedMinutes);
+
   return (
-    <p className="mt-1 text-xs text-foreground/50" title="Rank among pending jobs on this partition — indicative, not a time estimate">
-      Queue position: {label}
-    </p>
+    <div className="mt-1 flex items-center justify-between gap-3 text-xs text-foreground/50">
+      <span className="flex items-center gap-1.5">
+        <span title="Rank among pending jobs on this partition — indicative, not a time estimate">
+          Queue position: {label}
+        </span>
+        {estimatedStart && targetMs != null && remainingSeconds != null ? (
+          <span className={waitColorClassName} title="Estimated by SLURM's backfill scheduler — not a guarantee">
+            · estimated{" "}
+            <span className="font-bold">
+              {remainingSeconds > 0 ? `starting in ${formatCountdown(remainingSeconds)}` : "starting any moment"}
+            </span>
+          </span>
+        ) : estimatedStartPending ? (
+          <span className={`inline-flex items-center gap-1 ${waitColorClassName}`}>
+            <Loader2 className="h-3 w-3 animate-spin" />
+            estimating start time…
+          </span>
+        ) : null}
+      </span>
+      {targetMs != null ? (
+        <span className={waitColorClassName} title="Estimated by SLURM's backfill scheduler — not a guarantee">
+          est. {new Date(targetMs).toLocaleString()}
+        </span>
+      ) : null}
+    </div>
   );
 }
 
@@ -234,6 +373,7 @@ function SliderField({
   min,
   max,
   suffix = "",
+  formatValue,
   onChange,
 }: {
   label: string;
@@ -241,16 +381,14 @@ function SliderField({
   min: number;
   max: number;
   suffix?: string;
+  formatValue?: (value: number) => string;
   onChange: (value: number) => void;
 }) {
   return (
     <label className="flex flex-col gap-1 text-xs text-foreground/60">
       <span className="flex items-center justify-between">
         <span>{label}</span>
-        <span className="font-mono text-foreground/80">
-          {value}
-          {suffix}
-        </span>
+        <span className="font-mono text-foreground/80">{formatValue ? formatValue(value) : `${value}${suffix}`}</span>
       </span>
       <input
         type="range"
@@ -336,10 +474,10 @@ function HpcResourceSettings({
         />
 
         <SliderField
-          label={`Min time${partitionInfo ? ` (partition max ${partitionInfo.max_time_raw})` : ""}`}
+          label={`Min time${partitionInfo?.max_time_minutes != null ? ` (partition max ${formatMinutes(partitionInfo.max_time_minutes)})` : ""}`}
           min={1}
           max={timeMinSliderMax}
-          suffix=" min"
+          formatValue={formatMinutes}
           value={resources.time_min_minutes ?? defaultTimeMin}
           onChange={(time_min_minutes) => onChange({ time_min_minutes })}
         />
