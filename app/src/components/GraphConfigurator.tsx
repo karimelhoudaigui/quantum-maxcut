@@ -6,6 +6,7 @@ import { usePipelineStore } from "../stores/pipelineStore";
 import type { GraphFamily } from "../types";
 
 const families: GraphFamily[] = ["path", "cycle", "star", "complete", "random"];
+const quantinaLogoSrc = `${import.meta.env.BASE_URL}media/brand/quantina-logo.png`;
 
 export function GraphConfigurator() {
   const config = usePipelineStore((state) => state.config);
@@ -21,8 +22,13 @@ export function GraphConfigurator() {
   return (
     <aside className="flex min-h-0 flex-col overflow-y-auto overscroll-contain border-b border-border bg-muted/30 p-4 sm:p-5 lg:h-[100svh] lg:border-b-0 lg:border-r">
       <div className="mb-6 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-md border border-primary/40 bg-primary text-xs font-black tracking-tight text-background">
-          QO
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-white/12 bg-black/25 p-1 shadow-[0_0_28px_hsl(var(--primary)/0.18)]">
+          <img
+            alt=""
+            aria-hidden="true"
+            className="h-full w-full object-contain drop-shadow-[0_0_7px_rgba(255,79,116,0.3)]"
+            src={quantinaLogoSrc}
+          />
         </div>
         <div>
           <h1 className="text-lg font-semibold">Q-OPT Lab</h1>
