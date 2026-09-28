@@ -74,7 +74,58 @@ input {
 
 .quantina-theme {
   --foreground: 255 20% 96%;
-  --primary: 64 82% 65%;
+  --primary: 168 66% 55%;
+}
+
+.quantina-quantum-field {
+  opacity: 0.62;
+  pointer-events: none;
+}
+
+.quantina-phase-path {
+  fill: none;
+  stroke: #41d8ba;
+  stroke-dasharray: 10 18;
+  stroke-linecap: square;
+  stroke-width: 2;
+  animation: quantina-phase-flow 12s linear infinite;
+}
+
+.quantina-phase-path-delayed {
+  stroke: #7dd3fc;
+  animation-delay: -5s;
+  animation-duration: 15s;
+}
+
+.quantina-qubit {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: quantina-qubit-state 4.8s ease-in-out infinite;
+}
+
+.quantina-qubit-2 {
+  animation-delay: -0.9s;
+}
+
+.quantina-qubit-3 {
+  animation-delay: -1.8s;
+}
+
+.quantina-qubit-4 {
+  animation-delay: -2.7s;
+}
+
+.quantina-qubit-5 {
+  animation-delay: -3.6s;
+}
+
+.quantina-state-ring {
+  transform-origin: 368px 342px;
+  animation: quantina-state-rotation 28s linear infinite;
+}
+
+.quantina-measurement {
+  animation: quantina-measurement-state 6s steps(1, end) infinite;
 }
 
 .quantina-enter {
@@ -140,9 +191,56 @@ input {
   }
 }
 
+@keyframes quantina-phase-flow {
+  to {
+    stroke-dashoffset: -224;
+  }
+}
+
+@keyframes quantina-qubit-state {
+  0%,
+  100% {
+    opacity: 0.38;
+    transform: scale(0.9);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes quantina-state-rotation {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes quantina-measurement-state {
+  0%,
+  74% {
+    opacity: 0.45;
+  }
+
+  75%,
+  100% {
+    opacity: 1;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .quantina-enter {
+  .quantina-enter,
+  .quantina-measurement,
+  .quantina-phase-path,
+  .quantina-qubit,
+  .quantina-state-ring {
     animation: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .quantina-quantum-field {
+    opacity: 0.18;
   }
 }
 

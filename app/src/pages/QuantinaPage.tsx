@@ -121,7 +121,7 @@ const useCases: UseCase[] = [
     partners: "LOMA, XLIM, IMB, LaBRI and partner ecosystems",
     status: "Methodology",
     icon: Waves,
-    accent: "text-indigo-300",
+    accent: "text-sky-300",
   },
   {
     title: "Post-quantum cryptography",
@@ -220,7 +220,7 @@ const teamMembers: TeamMember[] = [
 
 export function QuantinaPage({ onNavigate }: QuantinaPageProps) {
   return (
-    <main className="quantina-theme min-h-[100svh] overflow-x-clip bg-[#17151d] text-foreground">
+    <main className="quantina-theme min-h-[100svh] overflow-x-clip bg-[#0E1116] text-foreground">
       <QuantinaHeader onNavigate={onNavigate} />
       <HeroSection onNavigate={onNavigate} />
       <SectionDock />
@@ -239,9 +239,9 @@ function SectionDock() {
   const activeSection = useActiveSection();
 
   return (
-    <div className="sticky top-[65px] z-40 border-y border-black/10 bg-[#f1eff5] px-3 py-2.5 text-[#17151d] sm:px-8">
+    <div className="sticky top-[65px] z-40 border-y border-[#D0D6DC] bg-[#FAFAFA] px-3 py-2.5 text-[#111318] sm:px-8">
       <nav aria-label="QuantINA sections" className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto">
-        <a href="#top" className="mr-2 flex shrink-0 items-center gap-2 px-2 py-2 text-sm font-semibold text-[#17151d]">
+        <a href="#top" className="mr-2 flex shrink-0 items-center gap-2 px-2 py-2 text-sm font-semibold text-[#111318]">
           <img alt="" aria-hidden="true" className="h-6 w-6 object-contain" src={quantinaLogoSrc} />
           <span className="hidden sm:inline">QuantINA</span>
         </a>
@@ -254,7 +254,7 @@ function SectionDock() {
               aria-current={active ? "location" : undefined}
               className={[
                 "shrink-0 rounded-md px-3 py-2 text-xs font-semibold transition",
-                active ? "bg-[#6246e5] text-white" : "text-[#5f5b68] hover:bg-black/[0.055] hover:text-[#17151d]",
+                active ? "bg-[#41D8BA] text-[#0E1116]" : "text-[#5F6873] hover:bg-[#E7EBEE] hover:text-[#111318]",
               ].join(" ")}
             >
               {item.label}
@@ -263,7 +263,7 @@ function SectionDock() {
         })}
         <a
           href="#join"
-          className="ml-auto hidden shrink-0 items-center gap-2 rounded-sm border border-[#6246e5] px-3 py-2 text-xs font-semibold text-[#5138ca] transition hover:bg-[#6246e5] hover:text-white md:inline-flex"
+          className="ml-auto hidden shrink-0 items-center gap-2 rounded-sm border border-[#32B3A2] px-3 py-2 text-xs font-semibold text-[#238E82] transition hover:bg-[#41D8BA] hover:text-[#0E1116] md:inline-flex"
         >
           Start a project
           <ArrowRight size={14} />
@@ -278,34 +278,32 @@ function useActiveSection() {
 
   useEffect(() => {
     const sections = sectionLinks.map(({ id }) => document.getElementById(id)).filter((section): section is HTMLElement => Boolean(section));
-    const firstSection = sections[0];
-    const updateHeroState = () => {
-      if (firstSection && window.scrollY < firstSection.offsetTop - window.innerHeight * 0.2) {
-        setActiveSection(firstSection.id);
-      }
+    if (sections.length === 0) return;
+
+    let animationFrame = 0;
+    const updateActiveSection = () => {
+      window.cancelAnimationFrame(animationFrame);
+      animationFrame = window.requestAnimationFrame(() => {
+        const firstSection = sections[0];
+        if (window.scrollY < firstSection.offsetTop - window.innerHeight * 0.2) {
+          setActiveSection(firstSection.id);
+          return;
+        }
+
+        const marker = window.scrollY + 180;
+        const current = sections.reduce((active, section) => (section.offsetTop <= marker ? section.id : active), firstSection.id);
+        setActiveSection(current);
+      });
     };
 
-    updateHeroState();
-    window.addEventListener("scroll", updateHeroState, { passive: true });
+    updateActiveSection();
+    window.addEventListener("scroll", updateActiveSection, { passive: true });
+    window.addEventListener("resize", updateActiveSection);
 
-    if (!("IntersectionObserver" in window) || sections.length === 0) {
-      return () => window.removeEventListener("scroll", updateHeroState);
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (visible?.target.id) setActiveSection(visible.target.id);
-      },
-      { rootMargin: "-20% 0px -65% 0px", threshold: [0, 0.1, 0.4] },
-    );
-
-    sections.forEach((section) => observer.observe(section));
     return () => {
-      observer.disconnect();
-      window.removeEventListener("scroll", updateHeroState);
+      window.cancelAnimationFrame(animationFrame);
+      window.removeEventListener("scroll", updateActiveSection);
+      window.removeEventListener("resize", updateActiveSection);
     };
   }, []);
 
@@ -314,10 +312,10 @@ function useActiveSection() {
 
 function QuantinaHeader({ onNavigate }: QuantinaPageProps) {
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-[#171321] px-5 sm:px-8 lg:px-12">
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-[#29323D] bg-[#0E1116] px-5 sm:px-8 lg:px-12">
       <div className="relative mx-auto flex h-16 max-w-7xl items-center justify-between gap-4">
         <a href="#top" className="flex min-w-0 items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm border border-[#7b68e8] bg-[#f1eff5] p-1">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm border border-[#41D8BA] bg-[#FAFAFA] p-1">
             <img alt="" aria-hidden="true" className="h-full w-full object-contain" src={quantinaLogoSrc} />
           </div>
           <div className="min-w-0">
@@ -328,7 +326,7 @@ function QuantinaHeader({ onNavigate }: QuantinaPageProps) {
 
         <a
           href="#project"
-          className="absolute left-1/2 top-1/2 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-sm border border-white/15 text-white/70 transition hover:border-[#e9f05a] hover:bg-[#e9f05a] hover:text-[#17151d] xl:hidden"
+          className="absolute left-1/2 top-1/2 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-sm border border-[#29323D] text-white/70 transition hover:border-[#41D8BA] hover:bg-[#41D8BA] hover:text-[#0E1116] xl:hidden"
           title="Program brief"
         >
           <HelpCircle size={18} strokeWidth={1.5} />
@@ -360,7 +358,7 @@ function QuantinaHeader({ onNavigate }: QuantinaPageProps) {
           <button
             type="button"
             onClick={() => onNavigate("/")}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-sm border border-white/15 text-white/75 transition hover:border-[#ff6474] hover:bg-[#ff6474] hover:text-[#17151d]"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-sm border border-[#29323D] text-white/75 transition hover:border-[#41D8BA] hover:bg-[#41D8BA] hover:text-[#0E1116]"
             title="Open simulation platform"
           >
             <ExternalLink size={16} />
@@ -373,14 +371,14 @@ function QuantinaHeader({ onNavigate }: QuantinaPageProps) {
 
 function HeroSection({ onNavigate }: QuantinaPageProps) {
   return (
-    <section id="top" className="relative min-h-[92svh] overflow-hidden bg-[#1c1530] px-5 pb-10 pt-28 sm:px-8 sm:pt-32 lg:px-12 xl:min-h-[94svh]">
+    <section id="top" className="relative min-h-[92svh] overflow-hidden bg-[#0E1116] px-5 pb-10 pt-28 sm:px-8 sm:pt-32 lg:px-12 xl:min-h-[94svh]">
       <HeroBackground />
 
       <div className="relative z-10 mx-auto flex min-h-[calc(92svh-8rem)] w-full max-w-7xl flex-col justify-end xl:min-h-[calc(94svh-9rem)]">
         <div className="grid min-w-0 gap-7 xl:grid-cols-[minmax(0,0.92fr)_minmax(480px,0.78fr)] xl:items-end">
           <div className="min-w-0">
             <AnimatedElement direction="down" delay={120}>
-              <div className="mb-6 inline-flex max-w-full items-center gap-2 rounded-sm bg-[#e9f05a] px-3 py-2 text-xs font-semibold text-[#17151d] sm:text-sm">
+              <div className="mb-6 inline-flex max-w-full items-center gap-2 rounded-sm border border-[#41D8BA] bg-[#181D25] px-3 py-2 text-xs font-semibold text-[#41D8BA] sm:text-sm">
                 <CircuitBoard size={16} className="shrink-0" />
                 Regional quantum technology transfer program
               </div>
@@ -389,7 +387,7 @@ function HeroSection({ onNavigate }: QuantinaPageProps) {
             <AnimatedElement direction="up" delay={260} className="min-w-0 max-w-full">
               <h1 className="max-w-[22rem] break-words text-4xl font-semibold leading-[0.98] text-white sm:max-w-5xl sm:text-7xl lg:text-[92px]">
                 QuantINA
-                <span className="mt-3 block max-w-4xl text-3xl leading-[1.04] text-[#d8d4e2] sm:text-5xl lg:text-[58px]">
+                <span className="mt-3 block max-w-4xl text-3xl leading-[1.04] text-[#ECF4F4]/82 sm:text-5xl lg:text-[58px]">
                   Quantum Industrial <span className="block sm:inline">Networks</span>
                   <span className="block">in Nouvelle-Aquitaine</span>
                 </span>
@@ -397,7 +395,7 @@ function HeroSection({ onNavigate }: QuantinaPageProps) {
             </AnimatedElement>
 
             <AnimatedElement direction="up" delay={430} className="min-w-0 max-w-full">
-              <p className="mt-7 max-w-[22rem] text-2xl font-medium leading-9 text-[#e9f05a] sm:max-w-3xl sm:text-3xl">
+              <p className="mt-7 max-w-[22rem] text-2xl font-medium leading-9 text-[#41D8BA] sm:max-w-3xl sm:text-3xl">
                 From industrial use cases to quantum experimentation.
               </p>
               <p className="mt-5 max-w-[22rem] text-base leading-8 text-white/68 sm:max-w-3xl sm:text-lg">
@@ -410,14 +408,14 @@ function HeroSection({ onNavigate }: QuantinaPageProps) {
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <a
                   href="#use-cases"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-sm bg-[#6246e5] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#745cf0] sm:w-auto"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-sm bg-[#41D8BA] px-5 py-3 text-sm font-semibold text-[#0E1116] transition hover:bg-[#58DCC3] sm:w-auto"
                 >
                   Explore use cases
                   <ArrowRight size={16} />
                 </a>
                 <a
                   href="#join"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-sm border border-white/35 px-5 py-3 text-sm font-semibold text-white transition hover:border-[#ff6474] hover:bg-[#ff6474] hover:text-[#17151d] sm:w-auto"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-sm border border-[#29323D] px-5 py-3 text-sm font-semibold text-white transition hover:border-[#41D8BA] hover:text-[#41D8BA] sm:w-auto"
                 >
                   Submit an industrial challenge
                 </a>
@@ -438,13 +436,67 @@ function HeroSection({ onNavigate }: QuantinaPageProps) {
 }
 
 function HeroBackground() {
+  const qubits = [
+    [108, 172],
+    [238, 172],
+    [368, 172],
+    [498, 172],
+    [628, 172],
+    [108, 342],
+    [238, 342],
+    [368, 342],
+    [498, 342],
+    [628, 342],
+    [108, 512],
+    [238, 512],
+    [368, 512],
+    [498, 512],
+    [628, 512],
+  ];
+
   return (
     <>
-      <div aria-hidden="true" className="absolute inset-0 bg-[#1c1530]" />
-      <div aria-hidden="true" className="absolute inset-y-0 right-0 hidden w-[38%] bg-[#6246e5] xl:block" />
-      <div aria-hidden="true" className="absolute bottom-0 left-0 h-2 w-[38%] bg-[#ff6474]" />
-      <div aria-hidden="true" className="absolute bottom-0 left-[38%] h-2 w-[24%] bg-[#e9f05a]" />
-      <div aria-hidden="true" className="absolute bottom-0 right-0 h-2 w-[38%] bg-[#f1eff5]" />
+      <div aria-hidden="true" className="absolute inset-0 bg-[#0E1116]" />
+      <svg
+        aria-hidden="true"
+        className="quantina-quantum-field absolute -right-[22rem] top-12 h-[86%] w-auto min-w-[760px] sm:-right-64 lg:-right-20 xl:right-2"
+        viewBox="0 0 760 680"
+      >
+        <g fill="none" stroke="#29323D" strokeWidth="1">
+          <path d="M108 172H628M108 342H628M108 512H628" />
+          <path d="M108 172V512M238 172V512M368 172V512M498 172V512M628 172V512" />
+          <circle cx="368" cy="342" r="242" />
+          <circle cx="368" cy="342" r="178" />
+          <path d="M126 342C194 210 286 138 368 138C450 138 542 210 610 342C542 474 450 546 368 546C286 546 194 474 126 342Z" />
+        </g>
+
+        <path className="quantina-phase-path" d="M70 262C170 82 276 590 382 262C472 -16 566 528 690 220" />
+        <path className="quantina-phase-path quantina-phase-path-delayed" d="M70 426C186 650 280 124 388 426C492 716 570 196 690 470" />
+
+        <g>
+          {qubits.map(([cx, cy], index) => (
+            <g key={`${cx}-${cy}`} className={`quantina-qubit quantina-qubit-${(index % 5) + 1}`}>
+              <circle cx={cx} cy={cy} r="12" fill="#0E1116" stroke="#41D8BA" strokeWidth="2" />
+              <circle cx={cx} cy={cy} r="4" fill={index % 4 === 0 ? "#7DD3FC" : "#41D8BA"} />
+            </g>
+          ))}
+        </g>
+
+        <g className="quantina-state-ring" fill="none" stroke="#58DCC3" strokeWidth="2">
+          <ellipse cx="368" cy="342" rx="86" ry="196" transform="rotate(28 368 342)" />
+          <ellipse cx="368" cy="342" rx="86" ry="196" transform="rotate(-28 368 342)" />
+        </g>
+
+        <g className="quantina-measurement" fontFamily="ui-monospace, SFMono-Regular, monospace" fontSize="14" fontWeight="700">
+          <rect x="344" y="318" width="48" height="48" fill="#181D25" stroke="#7DD3FC" />
+          <text x="368" y="348" fill="#ECF4F4" textAnchor="middle">H</text>
+          <text x="92" y="145" fill="#58DCC3">|0&gt;</text>
+          <text x="612" y="548" fill="#7DD3FC">|1&gt;</text>
+        </g>
+      </svg>
+      <div aria-hidden="true" className="absolute bottom-0 left-0 h-1.5 w-[52%] bg-[#41D8BA]" />
+      <div aria-hidden="true" className="absolute bottom-0 left-[52%] h-1.5 w-[30%] bg-[#7DD3FC]" />
+      <div aria-hidden="true" className="absolute bottom-0 right-0 h-1.5 w-[18%] bg-[#FF5A6F]" />
     </>
   );
 }
@@ -455,19 +507,19 @@ function HeroTransferCard() {
 
   return (
     <AnimatedElement direction="right" delay={520}>
-      <div className="relative h-[300px] overflow-hidden rounded-sm border-2 border-white/30 bg-[#17151d]">
+      <div className="relative h-[300px] overflow-hidden rounded-sm border border-[#29323D] bg-[#181D25]">
         <div className="relative z-10 flex h-full flex-col justify-between p-5">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase text-foreground/42">Transfer engine</p>
               <h2 className="mt-2 text-xl font-semibold text-white">Industrial readiness map</h2>
             </div>
-            <span className="rounded-sm bg-[#ff6474] px-3 py-1.5 text-xs font-semibold text-[#17151d]">Live method</span>
+            <span className="rounded-sm bg-[#34D399] px-3 py-1.5 text-xs font-semibold text-[#0E1116]">Live method</span>
           </div>
 
           <div>
             <div className="flex items-end gap-4">
-              <p className="font-mono text-[78px] font-semibold leading-[0.82] text-[#e9f05a] tabular-nums">{activeTracks}</p>
+              <p className="font-mono text-[78px] font-semibold leading-[0.82] text-[#41D8BA] tabular-nums">{activeTracks}</p>
               <p className="pb-2 text-xs font-semibold uppercase leading-5 text-foreground/55">
                 industrial
                 <br />
@@ -482,7 +534,7 @@ function HeroTransferCard() {
           <div className="grid grid-cols-5 gap-2">
             {nodes.map((node, index) => (
               <div key={node} className="min-w-0 border-t border-white/25 pt-2">
-                <p className="font-mono text-xs font-semibold text-[#ff6474]">{String(index + 1).padStart(2, "0")}</p>
+                <p className="font-mono text-xs font-semibold text-[#7DD3FC]">{String(index + 1).padStart(2, "0")}</p>
                 <p className="mt-2 truncate text-xs font-semibold text-white">{node}</p>
               </div>
             ))}
@@ -505,7 +557,7 @@ function HeroSignalGrid({ onNavigate }: QuantinaPageProps) {
           type="button"
           className={[
             "group min-h-[132px] rounded-sm border-2 p-4 text-left transition-all duration-300",
-            expanded ? "border-[#e9f05a] bg-[#e9f05a] text-[#17151d]" : "border-white/30 bg-[#211a36] text-white hover:border-[#e9f05a]",
+            expanded ? "border-[#FBBF24] bg-[#FBBF24] text-[#0E1116]" : "border-[#29323D] bg-[#181D25] text-white hover:border-[#FBBF24]",
           ].join(" ")}
           onMouseEnter={() => setExpanded(true)}
           onMouseLeave={() => setExpanded(false)}
@@ -514,14 +566,14 @@ function HeroSignalGrid({ onNavigate }: QuantinaPageProps) {
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-base font-semibold">Benchmark discipline</p>
-              <p className={["mt-1 text-xs", expanded ? "text-[#17151d]/60" : "text-white/55"].join(" ")}>Evidence first</p>
+              <p className={["mt-1 text-xs", expanded ? "text-[#0E1116]/65" : "text-white/55"].join(" ")}>Evidence first</p>
             </div>
-            <span className={["flex h-8 w-8 items-center justify-center rounded-sm", expanded ? "bg-[#17151d] text-[#e9f05a]" : "bg-[#ff6474] text-[#17151d]"].join(" ")}>
+            <span className={["flex h-8 w-8 items-center justify-center rounded-sm", expanded ? "bg-[#0E1116] text-[#FBBF24]" : "bg-[#29323D] text-[#7DD3FC]"].join(" ")}>
               <Gauge size={15} />
             </span>
           </div>
           {expanded ? (
-            <p className="mt-4 text-sm leading-6 text-[#17151d]/70">
+            <p className="mt-4 text-sm leading-6 text-[#0E1116]/72">
               No quantum advantage claim before baselines and benchmark evidence are explicit.
             </p>
           ) : null}
@@ -529,18 +581,18 @@ function HeroSignalGrid({ onNavigate }: QuantinaPageProps) {
         <button
           type="button"
           onClick={() => onNavigate("/")}
-          className="group min-h-[132px] rounded-sm border-2 border-[#e9f05a] bg-[#e9f05a] p-4 text-left text-[#17151d] transition hover:bg-[#f2f67e]"
+          className="group min-h-[132px] rounded-sm border border-[#41D8BA] bg-[#41D8BA] p-4 text-left text-[#0E1116] transition hover:bg-[#58DCC3]"
         >
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-base font-semibold">Simulation platform</p>
-              <p className="mt-1 text-xs text-[#17151d]/60">All simulations and demonstrators</p>
+              <p className="mt-1 text-xs text-[#0E1116]/65">All simulations and demonstrators</p>
             </div>
-            <span className="flex h-8 w-8 items-center justify-center rounded-sm bg-[#17151d] text-[#e9f05a]">
+            <span className="flex h-8 w-8 items-center justify-center rounded-sm bg-[#0E1116] text-[#41D8BA]">
               <ArrowRight size={15} />
             </span>
           </div>
-          <p className="mt-4 text-sm leading-6 text-[#17151d]/68">Open the first working module.</p>
+          <p className="mt-4 text-sm leading-6 text-[#0E1116]/70">Open the first working module.</p>
         </button>
       </div>
     </AnimatedElement>
@@ -549,13 +601,13 @@ function HeroSignalGrid({ onNavigate }: QuantinaPageProps) {
 
 function HeroSignalCard({ icon: Icon, title, value, note }: { icon: LucideIcon; title: string; value: string; note: string }) {
   return (
-    <article className="min-h-[132px] rounded-sm border-2 border-white/30 bg-[#f1eff5] p-4 text-[#17151d] transition hover:-translate-y-0.5">
+    <article className="min-h-[132px] rounded-sm border border-[#29323D] bg-[#181D25] p-4 text-[#ECF4F4] transition hover:-translate-y-0.5 hover:border-[#41D8BA]">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-base font-semibold">{title}</p>
-          <p className="mt-1 text-xs text-[#17151d]/55">{note}</p>
+          <p className="mt-1 text-xs text-[#ECF4F4]/55">{note}</p>
         </div>
-        <span className="flex h-8 w-8 items-center justify-center rounded-sm bg-[#6246e5] text-white">
+        <span className="flex h-8 w-8 items-center justify-center rounded-sm bg-[#29323D] text-[#41D8BA]">
           <Icon size={15} />
         </span>
       </div>
@@ -569,13 +621,13 @@ function HeroWorkflowTicker() {
 
   return (
     <AnimatedElement direction="up" delay={860} className="mt-9 hidden max-w-3xl sm:block">
-      <div className="inline-flex items-center rounded-sm border border-[#ff6474] px-4 py-2 text-xs font-semibold tracking-wide text-[#ff9aa5]">
+      <div className="inline-flex items-center rounded-sm border border-[#29323D] px-4 py-2 text-xs font-semibold tracking-wide text-[#41D8BA]">
         Evidence-first quantum transfer
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-3">
           {steps.map((step, index) => (
             <div key={`${step}-${index}`} className="flex items-center gap-3">
-              <span className="h-1.5 w-1.5 bg-[#e9f05a]" />
+              <span className="h-1.5 w-1.5 bg-[#7DD3FC]" />
               <span className="whitespace-nowrap text-xs font-semibold uppercase text-white/58">{step}</span>
             </div>
           ))}
@@ -619,19 +671,19 @@ function FlowSection() {
   ];
 
   return (
-    <section className="border-y border-black/10 bg-[#e9f05a] px-5 py-12 text-[#17151d] sm:px-8 lg:px-10">
+    <section className="border-y border-[#32B3A2] bg-[#41D8BA] px-5 py-12 text-[#0E1116] sm:px-8 lg:px-10">
       <div className="mx-auto grid max-w-7xl gap-4 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
         <div>
-          <p className="text-sm font-medium uppercase text-[#5138ca]">Operating logic</p>
-          <h2 className="mt-2 text-3xl font-semibold text-[#17151d]">From industrial challenges to quantum experiments.</h2>
+          <p className="text-sm font-medium uppercase text-[#155E56]">Operating logic</p>
+          <h2 className="mt-2 text-3xl font-semibold text-[#0E1116]">From industrial challenges to quantum experiments.</h2>
         </div>
         <div className="grid border-t border-black/25 md:grid-cols-5 md:border-l md:border-t-0">
           {flow.map(({ title, icon: Icon }, index) => (
             <div key={title} className="relative border-b border-black/25 p-4 md:border-b-0 md:border-r">
-              <Icon size={18} className="text-[#5138ca]" />
-              <p className="mt-4 text-sm font-semibold leading-5 text-[#17151d]">{title}</p>
+              <Icon size={18} className="text-[#155E56]" />
+              <p className="mt-4 text-sm font-semibold leading-5 text-[#0E1116]">{title}</p>
               {index < flow.length - 1 ? (
-                <ArrowRight className="absolute -right-2.5 top-1/2 z-10 hidden -translate-y-1/2 bg-[#e9f05a] text-[#5138ca] md:block" size={18} />
+                <ArrowRight className="absolute -right-2.5 top-1/2 z-10 hidden -translate-y-1/2 bg-[#41D8BA] text-[#155E56] md:block" size={18} />
               ) : null}
             </div>
           ))}
@@ -643,7 +695,7 @@ function FlowSection() {
 
 function ProjectSection() {
   return (
-    <section id="project" className="scroll-mt-40 bg-[#f1eff5] px-5 py-24 text-[#17151d] sm:px-8 lg:px-10">
+    <section id="project" className="scroll-mt-40 bg-[#FAFAFA] px-5 py-24 text-[#111318] sm:px-8 lg:px-10">
       <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
         <SectionIntro
           tone="light"
@@ -668,7 +720,7 @@ function UseCasesSection() {
   const SelectedIcon = selected.icon;
 
   return (
-    <section id="use-cases" className="scroll-mt-40 bg-[#17151d] px-5 py-24 sm:px-8 lg:px-10">
+    <section id="use-cases" className="scroll-mt-40 bg-[#0E1116] px-5 py-24 sm:px-8 lg:px-10">
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
           <SectionIntro
@@ -676,12 +728,12 @@ function UseCasesSection() {
             title="Industrial problems studied through a rigorous quantum and HPC lens."
             text="Each case starts with the industrial constraint, then moves through modelling, baseline selection, algorithmic exploration and documented benchmarking."
           />
-          <div className="rounded-sm bg-[#e9f05a] px-4 py-3 text-sm font-semibold text-[#17151d]">
+          <div className="rounded-sm bg-[#FBBF24] px-4 py-3 text-sm font-semibold text-[#0E1116]">
             No quantum advantage claim. Evidence first.
           </div>
         </div>
 
-        <div className="grid overflow-hidden rounded-sm border border-white/20 bg-[#201d27] lg:grid-cols-[0.38fr_0.62fr]">
+        <div className="grid overflow-hidden rounded-sm border border-[#29323D] bg-[#181D25] lg:grid-cols-[0.38fr_0.62fr]">
           <div className="border-b border-white/15 p-2 lg:border-b-0 lg:border-r">
             <div className="flex gap-2 overflow-x-auto lg:grid">
               {useCases.map((useCase, index) => {
@@ -695,11 +747,11 @@ function UseCasesSection() {
                     className={[
                       "flex min-w-[210px] items-center gap-3 rounded-sm border-l-4 px-4 py-3 text-left transition lg:min-w-0",
                       active
-                        ? "border-[#ff6474] bg-[#302a3d] text-white"
+                        ? "border-[#41D8BA] bg-[#29323D] text-white"
                         : "border-transparent text-white/55 hover:border-white/30 hover:bg-white/[0.035] hover:text-white",
                     ].join(" ")}
                   >
-                    <span className={active ? "text-[#e9f05a]" : useCase.accent}>
+                    <span className={active ? "text-[#41D8BA]" : useCase.accent}>
                       <Icon size={18} />
                     </span>
                     <span className="min-w-0">
@@ -712,13 +764,13 @@ function UseCasesSection() {
             </div>
           </div>
 
-          <article className="relative min-h-[430px] overflow-hidden border-t-4 border-[#6246e5] p-6 sm:p-8 lg:p-10">
+          <article className="relative min-h-[430px] overflow-hidden border-t-4 border-[#41D8BA] p-6 sm:p-8 lg:p-10">
             <div className="flex h-full flex-col">
               <div className="flex items-start justify-between gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-sm bg-[#6246e5] text-white">
+                <div className="flex h-12 w-12 items-center justify-center rounded-sm bg-[#41D8BA] text-[#0E1116]">
                   <SelectedIcon size={23} />
                 </div>
-                <span className="rounded-sm bg-[#e9f05a] px-3 py-1.5 text-xs font-semibold text-[#17151d]">
+                <span className="rounded-sm bg-[#FBBF24] px-3 py-1.5 text-xs font-semibold text-[#0E1116]">
                   {selected.status}
                 </span>
               </div>
@@ -741,7 +793,7 @@ function UseCasesSection() {
 
 function WorkflowSection() {
   return (
-    <section id="method" className="scroll-mt-40 bg-[#6246e5] px-5 py-24 sm:px-8 lg:px-10">
+    <section id="method" className="scroll-mt-40 border-y border-[#29323D] bg-[#181D25] px-5 py-24 sm:px-8 lg:px-10">
       <div className="mx-auto max-w-7xl">
         <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
           <SectionIntro
@@ -753,7 +805,7 @@ function WorkflowSection() {
           <div className="grid gap-3">
             {workflow.map((step, index) => (
               <div key={step} className="grid grid-cols-[3.25rem_1fr] items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-sm bg-[#e9f05a] font-mono text-sm font-semibold text-[#17151d]">
+                <div className="flex h-12 w-12 items-center justify-center rounded-sm bg-[#41D8BA] font-mono text-sm font-semibold text-[#0E1116]">
                   {String(index + 1).padStart(2, "0")}
                 </div>
                 <div className="border-b border-white/35 px-4 py-3">
@@ -777,20 +829,20 @@ function WorkflowSection() {
 
 function EcosystemSection() {
   return (
-    <section id="ecosystem" className="scroll-mt-40 border-y border-black/10 bg-[#f1eff5] px-5 py-24 text-[#17151d] sm:px-8 lg:px-10">
+    <section id="ecosystem" className="scroll-mt-40 border-y border-[#D0D6DC] bg-[#E7EBEE] px-5 py-24 text-[#111318] sm:px-8 lg:px-10">
       <div className="mx-auto max-w-7xl">
         <div className="grid gap-10 border-b border-black/15 pb-12 lg:grid-cols-[1.15fr_0.85fr] lg:items-end">
           <div className="max-w-4xl">
             <div className="mb-6 flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-sm border border-[#6246e5] bg-white p-1.5">
+              <div className="flex h-14 w-14 items-center justify-center rounded-sm border border-[#41D8BA] bg-white p-1.5">
                 <img className="h-full w-full object-contain" src={quantinaLogoSrc} alt="QuantINA" />
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase text-[#ff4f74]">Led by the Maison du Quantique</p>
+                <p className="text-xs font-semibold uppercase text-[#FF5A6F]">Led by the Maison du Quantique</p>
                 <p className="mt-1 text-sm font-medium text-[#5f5b68]">Nouvelle-Aquitaine quantum ecosystem</p>
               </div>
             </div>
-            <h2 className="max-w-4xl text-4xl font-semibold leading-tight text-[#17151d] sm:text-5xl">
+            <h2 className="max-w-4xl text-4xl font-semibold leading-tight text-[#111318] sm:text-5xl">
               QuantINA is carried by a regional network built for research, transfer and execution.
             </h2>
           </div>
@@ -806,8 +858,8 @@ function EcosystemSection() {
             ["1", "regional coordination hub"],
             ["Research → industry", "a shared transfer pathway"],
           ].map(([value, label]) => (
-            <div key={label} className="border-l-2 border-[#ff4f74] pl-4">
-              <p className="text-xl font-semibold text-[#17151d]">{value}</p>
+            <div key={label} className="border-l-2 border-[#FF5A6F] pl-4">
+              <p className="text-xl font-semibold text-[#111318]">{value}</p>
               <p className="mt-1 text-sm text-[#5f5b68]">{label}</p>
             </div>
           ))}
@@ -835,7 +887,7 @@ function EcosystemSection() {
 
 function DeliverablesSection() {
   return (
-    <section id="outputs" className="scroll-mt-40 bg-[#17151d] px-5 py-24 sm:px-8 lg:px-10">
+    <section id="outputs" className="scroll-mt-40 bg-[#0E1116] px-5 py-24 sm:px-8 lg:px-10">
       <div className="mx-auto max-w-7xl">
         <SectionIntro
           eyebrow="Results and deliverables"
@@ -854,7 +906,7 @@ function DeliverablesSection() {
 
 function JoinSection() {
   return (
-    <section id="join" className="scroll-mt-40 bg-[#f1eff5] px-5 py-24 text-[#17151d] sm:px-8 lg:px-10">
+    <section id="join" className="scroll-mt-40 bg-[#FAFAFA] px-5 py-24 text-[#111318] sm:px-8 lg:px-10">
       <div className="mx-auto max-w-7xl">
         <div className="grid gap-8 lg:grid-cols-[0.72fr_1.28fr] lg:items-start">
           <SectionIntro
@@ -890,8 +942,8 @@ function SectionIntro({
 
   return (
     <div className="max-w-3xl">
-      <p className={isLight ? "text-sm font-medium uppercase text-[#5138ca]" : "text-sm font-medium uppercase text-[#e9f05a]"}>{eyebrow}</p>
-      <h2 className={isLight ? "mt-2 text-3xl font-semibold leading-tight text-[#17151d] sm:text-4xl" : "mt-2 text-3xl font-semibold leading-tight text-white sm:text-4xl"}>
+      <p className={isLight ? "text-sm font-medium uppercase text-[#238E82]" : "text-sm font-medium uppercase text-[#41D8BA]"}>{eyebrow}</p>
+      <h2 className={isLight ? "mt-2 text-3xl font-semibold leading-tight text-[#111318] sm:text-4xl" : "mt-2 text-3xl font-semibold leading-tight text-white sm:text-4xl"}>
         {title}
       </h2>
       <p className={isLight ? "mt-4 text-sm leading-7 text-[#5f5b68] sm:text-base" : "mt-4 text-sm leading-7 text-white/62 sm:text-base"}>
@@ -907,8 +959,8 @@ function ProgramCard({ item, tone = "dark" }: { item: ProgramItem; tone?: "dark"
 
   return (
     <article className={isLight ? "border-t border-black/20 py-5" : "border-t border-white/20 py-5"}>
-      <Icon size={20} className={isLight ? "text-[#6246e5]" : "text-[#ff6474]"} />
-      <h3 className={isLight ? "mt-5 text-lg font-semibold text-[#17151d]" : "mt-5 text-lg font-semibold text-white"}>{item.title}</h3>
+      <Icon size={20} className={isLight ? "text-[#238E82]" : "text-[#7DD3FC]"} />
+      <h3 className={isLight ? "mt-5 text-lg font-semibold text-[#111318]" : "mt-5 text-lg font-semibold text-white"}>{item.title}</h3>
       <p className={isLight ? "mt-3 text-sm leading-6 text-[#5f5b68]" : "mt-3 text-sm leading-6 text-white/58"}>{item.text}</p>
     </article>
   );
@@ -916,8 +968,8 @@ function ProgramCard({ item, tone = "dark" }: { item: ProgramItem; tone?: "dark"
 
 function TeamMemberCard({ member }: { member: TeamMember }) {
   return (
-    <article className="group overflow-hidden rounded-sm border border-black/15 bg-white transition hover:-translate-y-0.5 hover:border-[#6246e5]">
-      <div className="relative aspect-[1.18] overflow-hidden bg-[#ddd9e4]">
+    <article className="group overflow-hidden rounded-sm border border-[#D0D6DC] bg-white transition hover:-translate-y-0.5 hover:border-[#41D8BA]">
+      <div className="relative aspect-[1.18] overflow-hidden bg-[#E7EBEE]">
         <img
           alt={`${member.name} portrait`}
           className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.035]"
@@ -925,16 +977,16 @@ function TeamMemberCard({ member }: { member: TeamMember }) {
           loading="lazy"
           src={member.photo}
         />
-        <span className="absolute bottom-4 left-4 rounded-sm bg-[#e9f05a] px-3 py-1 text-xs font-semibold text-[#17151d]">
+        <span className="absolute bottom-4 left-4 rounded-sm bg-[#41D8BA] px-3 py-1 text-xs font-semibold text-[#0E1116]">
           {member.affiliation}
         </span>
       </div>
       <div className="p-5">
-        <p className="text-xs font-semibold uppercase tracking-wide text-[#5138ca]">{member.role}</p>
-        <h3 className="mt-2 text-xl font-semibold text-[#17151d]">{member.name}</h3>
+        <p className="text-xs font-semibold uppercase tracking-wide text-[#238E82]">{member.role}</p>
+        <h3 className="mt-2 text-xl font-semibold text-[#111318]">{member.name}</h3>
         <a
           href={`mailto:${member.email}`}
-          className="mt-4 inline-flex max-w-full items-center gap-2 rounded-sm border border-black/15 px-3 py-2 text-sm font-medium text-[#5f5b68] transition hover:border-[#6246e5] hover:text-[#5138ca]"
+          className="mt-4 inline-flex max-w-full items-center gap-2 rounded-sm border border-[#D0D6DC] px-3 py-2 text-sm font-medium text-[#5F6873] transition hover:border-[#41D8BA] hover:text-[#238E82]"
         >
           <Mail size={15} className="shrink-0" />
           <span className="truncate">{member.email}</span>
@@ -956,7 +1008,7 @@ function CaseLine({ label, value }: { label: string; value: string }) {
 function ModelPillar({ icon: Icon, title, text }: { icon: LucideIcon; title: string; text: string }) {
   return (
     <div className="border-t border-white/40 py-4">
-      <Icon size={18} className="text-[#e9f05a]" />
+      <Icon size={18} className="text-[#7DD3FC]" />
       <h3 className="mt-4 text-sm font-semibold text-white">{title}</h3>
       <p className="mt-2 text-xs leading-5 text-white/60">{text}</p>
     </div>
