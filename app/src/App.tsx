@@ -69,6 +69,11 @@ export default function App() {
   }, []);
 
   const navigate = (nextRoute: string) => {
+    if (/^https?:\/\//.test(nextRoute)) {
+      window.location.assign(nextRoute);
+      return;
+    }
+
     const nextPath =
       nextRoute === maxCutRoute ? `${appRoot}?simulation=maxcut` : nextRoute === quantinaRoute ? `${appRoot}?page=quantina` : appRoot;
     window.history.pushState({}, "", nextPath);

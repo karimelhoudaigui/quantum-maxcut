@@ -30,16 +30,16 @@ export const simulationModules: SimulationModule[] = [
     id: "ald",
     name: "ALD Simulation",
     description: "Simulate Atomic Layer Deposition processes and explore quantum-enhanced modelling approaches.",
-    category: "Materials modelling",
-    status: "coming-soon",
-    tags: ["Materials", "Simulation", "Coming Soon"],
+    category: "Quantum chemistry",
+    status: "available",
+    tags: ["Chemistry", "Materials", "Simulation"],
+    route: "https://karimelhoudaigui.github.io/quantum-ald-simulation/",
     icon: FlaskConical,
     visual: "layers",
   },
 ];
 
 export const futureSimulationModules = [
-  { name: "Quantum Chemistry", icon: Atom },
   { name: "Portfolio Optimization", icon: Boxes },
   { name: "Travelling Salesman Problem", icon: BrainCircuit },
   { name: "Molecular Simulation", icon: FlaskConical },
