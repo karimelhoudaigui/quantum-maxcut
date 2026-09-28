@@ -24,12 +24,10 @@ import {
   TrainFront,
   Waves,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
-const quantinaHeroPosterSrc = `${import.meta.env.BASE_URL}media/simulation-stack-poster.png`;
-const quantinaHeroVideoSrc = `${import.meta.env.BASE_URL}media/simulation-stack-4k.mp4`;
 const quantinaLogoSrc = `${import.meta.env.BASE_URL}media/brand/quantina-logo.png`;
 const maisonDuQuantiquePartnersSrc = `${import.meta.env.BASE_URL}media/brand/maison-du-quantique-partners.png`;
 
@@ -222,7 +220,7 @@ const teamMembers: TeamMember[] = [
 
 export function QuantinaPage({ onNavigate }: QuantinaPageProps) {
   return (
-    <main className="min-h-[100svh] overflow-x-clip bg-quantina text-foreground">
+    <main className="quantina-theme min-h-[100svh] overflow-x-clip bg-[#17151d] text-foreground">
       <QuantinaHeader onNavigate={onNavigate} />
       <HeroSection onNavigate={onNavigate} />
       <SectionDock />
@@ -241,9 +239,9 @@ function SectionDock() {
   const activeSection = useActiveSection();
 
   return (
-    <div className="sticky top-[76px] z-40 border-y border-white/10 bg-[#070b11]/92 px-3 py-3 shadow-[0_18px_50px_rgba(0,0,0,0.3)] backdrop-blur-2xl sm:top-[92px] sm:px-8">
+    <div className="sticky top-[65px] z-40 border-y border-black/10 bg-[#f1eff5] px-3 py-2.5 text-[#17151d] sm:px-8">
       <nav aria-label="QuantINA sections" className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto">
-        <a href="#top" className="mr-2 flex shrink-0 items-center gap-2 px-2 py-2 text-sm font-semibold text-white">
+        <a href="#top" className="mr-2 flex shrink-0 items-center gap-2 px-2 py-2 text-sm font-semibold text-[#17151d]">
           <img alt="" aria-hidden="true" className="h-6 w-6 object-contain" src={quantinaLogoSrc} />
           <span className="hidden sm:inline">QuantINA</span>
         </a>
@@ -256,7 +254,7 @@ function SectionDock() {
               aria-current={active ? "location" : undefined}
               className={[
                 "shrink-0 rounded-md px-3 py-2 text-xs font-semibold transition",
-                active ? "bg-primary text-background" : "text-foreground/55 hover:bg-white/[0.06] hover:text-white",
+                active ? "bg-[#6246e5] text-white" : "text-[#5f5b68] hover:bg-black/[0.055] hover:text-[#17151d]",
               ].join(" ")}
             >
               {item.label}
@@ -265,7 +263,7 @@ function SectionDock() {
         })}
         <a
           href="#join"
-          className="ml-auto hidden shrink-0 items-center gap-2 rounded-md border border-primary/30 px-3 py-2 text-xs font-semibold text-primary transition hover:bg-primary/10 md:inline-flex"
+          className="ml-auto hidden shrink-0 items-center gap-2 rounded-sm border border-[#6246e5] px-3 py-2 text-xs font-semibold text-[#5138ca] transition hover:bg-[#6246e5] hover:text-white md:inline-flex"
         >
           Start a project
           <ArrowRight size={14} />
@@ -280,7 +278,19 @@ function useActiveSection() {
 
   useEffect(() => {
     const sections = sectionLinks.map(({ id }) => document.getElementById(id)).filter((section): section is HTMLElement => Boolean(section));
-    if (!("IntersectionObserver" in window) || sections.length === 0) return;
+    const firstSection = sections[0];
+    const updateHeroState = () => {
+      if (firstSection && window.scrollY < firstSection.offsetTop - window.innerHeight * 0.2) {
+        setActiveSection(firstSection.id);
+      }
+    };
+
+    updateHeroState();
+    window.addEventListener("scroll", updateHeroState, { passive: true });
+
+    if (!("IntersectionObserver" in window) || sections.length === 0) {
+      return () => window.removeEventListener("scroll", updateHeroState);
+    }
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -293,7 +303,10 @@ function useActiveSection() {
     );
 
     sections.forEach((section) => observer.observe(section));
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("scroll", updateHeroState);
+    };
   }, []);
 
   return activeSection;
@@ -301,11 +314,11 @@ function useActiveSection() {
 
 function QuantinaHeader({ onNavigate }: QuantinaPageProps) {
   return (
-    <header className="fixed inset-x-0 top-0 z-50 px-5 pt-5 sm:px-8 sm:pt-7 lg:px-12">
-      <div className="relative mx-auto flex max-w-7xl items-start justify-between gap-4">
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-[#171321] px-5 sm:px-8 lg:px-12">
+      <div className="relative mx-auto flex h-16 max-w-7xl items-center justify-between gap-4">
         <a href="#top" className="flex min-w-0 items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-white/12 bg-black/25 p-1 shadow-[0_0_34px_hsl(var(--primary)/0.22)] backdrop-blur-2xl">
-            <img alt="" aria-hidden="true" className="h-full w-full object-contain drop-shadow-[0_0_8px_rgba(255,79,116,0.32)]" src={quantinaLogoSrc} />
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm border border-[#7b68e8] bg-[#f1eff5] p-1">
+            <img alt="" aria-hidden="true" className="h-full w-full object-contain" src={quantinaLogoSrc} />
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-white">QuantINA</p>
@@ -315,13 +328,13 @@ function QuantinaHeader({ onNavigate }: QuantinaPageProps) {
 
         <a
           href="#project"
-          className="absolute left-1/2 top-0 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border border-white/10 bg-black/25 text-foreground/75 shadow-[0_16px_50px_rgba(0,0,0,0.24)] backdrop-blur-2xl transition hover:border-primary/35 hover:text-primary"
+          className="absolute left-1/2 top-1/2 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-sm border border-white/15 text-white/70 transition hover:border-[#e9f05a] hover:bg-[#e9f05a] hover:text-[#17151d] xl:hidden"
           title="Program brief"
         >
           <HelpCircle size={18} strokeWidth={1.5} />
         </a>
 
-        <nav className="hidden items-center gap-5 rounded-full border border-white/10 bg-black/20 px-5 py-3 text-xs font-medium text-foreground/62 backdrop-blur-2xl xl:flex">
+        <nav className="hidden items-center gap-6 text-xs font-medium text-white/65 xl:flex">
           <a className="transition hover:text-primary" href="#project">
             Project
           </a>
@@ -347,7 +360,7 @@ function QuantinaHeader({ onNavigate }: QuantinaPageProps) {
           <button
             type="button"
             onClick={() => onNavigate("/")}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/12 bg-black/25 text-foreground/75 shadow-[0_16px_50px_rgba(0,0,0,0.24)] backdrop-blur-2xl transition hover:border-primary/35 hover:text-primary sm:h-12 sm:w-12"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-sm border border-white/15 text-white/75 transition hover:border-[#ff6474] hover:bg-[#ff6474] hover:text-[#17151d]"
             title="Open simulation platform"
           >
             <ExternalLink size={16} />
@@ -360,14 +373,14 @@ function QuantinaHeader({ onNavigate }: QuantinaPageProps) {
 
 function HeroSection({ onNavigate }: QuantinaPageProps) {
   return (
-    <section id="top" className="relative min-h-[92svh] overflow-hidden px-5 pb-8 pt-28 sm:px-8 sm:pb-10 sm:pt-32 lg:px-12 xl:min-h-[94svh]">
+    <section id="top" className="relative min-h-[92svh] overflow-hidden bg-[#1c1530] px-5 pb-10 pt-28 sm:px-8 sm:pt-32 lg:px-12 xl:min-h-[94svh]">
       <HeroBackground />
 
       <div className="relative z-10 mx-auto flex min-h-[calc(92svh-8rem)] w-full max-w-7xl flex-col justify-end xl:min-h-[calc(94svh-9rem)]">
         <div className="grid min-w-0 gap-7 xl:grid-cols-[minmax(0,0.92fr)_minmax(480px,0.78fr)] xl:items-end">
           <div className="min-w-0">
             <AnimatedElement direction="down" delay={120}>
-              <div className="mb-5 inline-flex max-w-full items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary shadow-[0_18px_70px_hsl(var(--primary)/0.12)] backdrop-blur-2xl sm:text-sm">
+              <div className="mb-6 inline-flex max-w-full items-center gap-2 rounded-sm bg-[#e9f05a] px-3 py-2 text-xs font-semibold text-[#17151d] sm:text-sm">
                 <CircuitBoard size={16} className="shrink-0" />
                 Regional quantum technology transfer program
               </div>
@@ -376,7 +389,7 @@ function HeroSection({ onNavigate }: QuantinaPageProps) {
             <AnimatedElement direction="up" delay={260} className="min-w-0 max-w-full">
               <h1 className="max-w-[22rem] break-words text-4xl font-semibold leading-[0.98] text-white sm:max-w-5xl sm:text-7xl lg:text-[92px]">
                 QuantINA
-                <span className="mt-3 block max-w-4xl text-3xl leading-[1.04] text-foreground/82 sm:text-5xl lg:text-[58px]">
+                <span className="mt-3 block max-w-4xl text-3xl leading-[1.04] text-[#d8d4e2] sm:text-5xl lg:text-[58px]">
                   Quantum Industrial <span className="block sm:inline">Networks</span>
                   <span className="block">in Nouvelle-Aquitaine</span>
                 </span>
@@ -384,10 +397,10 @@ function HeroSection({ onNavigate }: QuantinaPageProps) {
             </AnimatedElement>
 
             <AnimatedElement direction="up" delay={430} className="min-w-0 max-w-full">
-              <p className="mt-7 max-w-[22rem] text-2xl font-medium leading-9 text-primary sm:max-w-3xl sm:text-3xl">
+              <p className="mt-7 max-w-[22rem] text-2xl font-medium leading-9 text-[#e9f05a] sm:max-w-3xl sm:text-3xl">
                 From industrial use cases to quantum experimentation.
               </p>
-              <p className="mt-5 max-w-[22rem] text-base leading-8 text-foreground/70 sm:max-w-3xl sm:text-lg">
+              <p className="mt-5 max-w-[22rem] text-base leading-8 text-white/68 sm:max-w-3xl sm:text-lg">
                 A program led by the Maison du Quantique de Nouvelle-Aquitaine to connect companies, researchers and engineers around
                 concrete industrial use cases in quantum, hybrid and HPC computing.
               </p>
@@ -397,14 +410,14 @@ function HeroSection({ onNavigate }: QuantinaPageProps) {
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <a
                   href="#use-cases"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-5 py-3 text-sm font-semibold text-background transition hover:opacity-90 sm:w-auto"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-sm bg-[#6246e5] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#745cf0] sm:w-auto"
                 >
                   Explore use cases
                   <ArrowRight size={16} />
                 </a>
                 <a
                   href="#join"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-white/15 bg-black/20 px-5 py-3 text-sm font-semibold text-white backdrop-blur-2xl transition hover:border-primary/45 hover:text-primary sm:w-auto"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-sm border border-white/35 px-5 py-3 text-sm font-semibold text-white transition hover:border-[#ff6474] hover:bg-[#ff6474] hover:text-[#17151d] sm:w-auto"
                 >
                   Submit an industrial challenge
                 </a>
@@ -425,71 +438,36 @@ function HeroSection({ onNavigate }: QuantinaPageProps) {
 }
 
 function HeroBackground() {
-  const showVideo = useQuantinaHeroVideoEnabled();
-  const [videoReady, setVideoReady] = useState(false);
-
   return (
     <>
-      <img
-        aria-hidden="true"
-        alt=""
-        className="absolute inset-0 h-full w-full object-cover opacity-35"
-        decoding="async"
-        src={quantinaHeroPosterSrc}
-      />
-      {showVideo ? (
-        <video
-          aria-hidden="true"
-          className={[
-            "quantina-hero-video absolute inset-0 h-full w-full object-cover transition-opacity duration-[1500ms]",
-            videoReady ? "opacity-[0.32]" : "opacity-0",
-          ].join(" ")}
-          autoPlay
-          loop
-          muted
-          playsInline
-          poster={quantinaHeroPosterSrc}
-          preload="metadata"
-          src={quantinaHeroVideoSrc}
-          onCanPlay={() => setVideoReady(true)}
-        />
-      ) : null}
-      <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,7,13,0.97)_0%,rgba(5,7,13,0.78)_46%,rgba(5,7,13,0.42)_100%)]" />
-      <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.045)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[size:72px_72px] opacity-25" />
-      <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#05070d] to-transparent" />
+      <div aria-hidden="true" className="absolute inset-0 bg-[#1c1530]" />
+      <div aria-hidden="true" className="absolute inset-y-0 right-0 hidden w-[38%] bg-[#6246e5] xl:block" />
+      <div aria-hidden="true" className="absolute bottom-0 left-0 h-2 w-[38%] bg-[#ff6474]" />
+      <div aria-hidden="true" className="absolute bottom-0 left-[38%] h-2 w-[24%] bg-[#e9f05a]" />
+      <div aria-hidden="true" className="absolute bottom-0 right-0 h-2 w-[38%] bg-[#f1eff5]" />
     </>
   );
 }
 
 function HeroTransferCard() {
-  const activeTracks = useCountUp(5, 1800);
+  const activeTracks = 5;
   const nodes = ["Challenge", "Model", "Baseline", "Quantum", "Decision"];
 
   return (
     <AnimatedElement direction="right" delay={520}>
-      <div className="relative h-[300px] overflow-hidden rounded-lg border border-white/12 bg-black/22 shadow-[0_32px_120px_rgba(0,0,0,0.38)] backdrop-blur-2xl">
-        <div
-          aria-hidden="true"
-          className="quantina-spin-bg absolute inset-[-12%] opacity-45"
-          style={{
-            backgroundImage: `url(${quantinaHeroPosterSrc})`,
-            backgroundPosition: "center",
-            backgroundSize: "cover",
-          }}
-        />
-        <div aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(circle_at_46%_38%,rgba(45,212,191,0.18),transparent_34%),linear-gradient(180deg,rgba(5,7,13,0.2),rgba(5,7,13,0.88))]" />
+      <div className="relative h-[300px] overflow-hidden rounded-sm border-2 border-white/30 bg-[#17151d]">
         <div className="relative z-10 flex h-full flex-col justify-between p-5">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase text-foreground/42">Transfer engine</p>
               <h2 className="mt-2 text-xl font-semibold text-white">Industrial readiness map</h2>
             </div>
-            <span className="rounded-md border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">Live method</span>
+            <span className="rounded-sm bg-[#ff6474] px-3 py-1.5 text-xs font-semibold text-[#17151d]">Live method</span>
           </div>
 
           <div>
             <div className="flex items-end gap-4">
-              <p className="font-mono text-[78px] font-semibold leading-[0.82] text-white tabular-nums">{activeTracks}</p>
+              <p className="font-mono text-[78px] font-semibold leading-[0.82] text-[#e9f05a] tabular-nums">{activeTracks}</p>
               <p className="pb-2 text-xs font-semibold uppercase leading-5 text-foreground/55">
                 industrial
                 <br />
@@ -503,8 +481,8 @@ function HeroTransferCard() {
 
           <div className="grid grid-cols-5 gap-2">
             {nodes.map((node, index) => (
-              <div key={node} className="min-w-0 rounded-md border border-white/10 bg-black/24 p-2">
-                <p className="font-mono text-xs font-semibold text-primary">{String(index + 1).padStart(2, "0")}</p>
+              <div key={node} className="min-w-0 border-t border-white/25 pt-2">
+                <p className="font-mono text-xs font-semibold text-[#ff6474]">{String(index + 1).padStart(2, "0")}</p>
                 <p className="mt-2 truncate text-xs font-semibold text-white">{node}</p>
               </div>
             ))}
@@ -526,8 +504,8 @@ function HeroSignalGrid({ onNavigate }: QuantinaPageProps) {
         <button
           type="button"
           className={[
-            "group min-h-[132px] rounded-lg border p-4 text-left transition-all duration-300",
-            expanded ? "border-white/80 bg-white text-background" : "border-white/10 bg-[#2f2f2f]/55 text-white backdrop-blur-2xl hover:bg-[#2f2f2f]/70",
+            "group min-h-[132px] rounded-sm border-2 p-4 text-left transition-all duration-300",
+            expanded ? "border-[#e9f05a] bg-[#e9f05a] text-[#17151d]" : "border-white/30 bg-[#211a36] text-white hover:border-[#e9f05a]",
           ].join(" ")}
           onMouseEnter={() => setExpanded(true)}
           onMouseLeave={() => setExpanded(false)}
@@ -536,14 +514,14 @@ function HeroSignalGrid({ onNavigate }: QuantinaPageProps) {
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-base font-semibold">Benchmark discipline</p>
-              <p className={["mt-1 text-xs", expanded ? "text-background/55" : "text-white/55"].join(" ")}>Evidence first</p>
+              <p className={["mt-1 text-xs", expanded ? "text-[#17151d]/60" : "text-white/55"].join(" ")}>Evidence first</p>
             </div>
-            <span className={["flex h-8 w-8 items-center justify-center rounded-full", expanded ? "bg-[#f0f0f0]" : "bg-black/55"].join(" ")}>
+            <span className={["flex h-8 w-8 items-center justify-center rounded-sm", expanded ? "bg-[#17151d] text-[#e9f05a]" : "bg-[#ff6474] text-[#17151d]"].join(" ")}>
               <Gauge size={15} />
             </span>
           </div>
           {expanded ? (
-            <p className="mt-4 text-sm leading-6 text-background/68">
+            <p className="mt-4 text-sm leading-6 text-[#17151d]/70">
               No quantum advantage claim before baselines and benchmark evidence are explicit.
             </p>
           ) : null}
@@ -551,18 +529,18 @@ function HeroSignalGrid({ onNavigate }: QuantinaPageProps) {
         <button
           type="button"
           onClick={() => onNavigate("/")}
-          className="group min-h-[132px] rounded-lg border border-primary/25 bg-primary/[0.09] p-4 text-left text-white backdrop-blur-2xl transition hover:border-primary/50"
+          className="group min-h-[132px] rounded-sm border-2 border-[#e9f05a] bg-[#e9f05a] p-4 text-left text-[#17151d] transition hover:bg-[#f2f67e]"
         >
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-base font-semibold">Simulation platform</p>
-              <p className="mt-1 text-xs text-white/55">All simulations and demonstrators</p>
+              <p className="mt-1 text-xs text-[#17151d]/60">All simulations and demonstrators</p>
             </div>
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-background">
+            <span className="flex h-8 w-8 items-center justify-center rounded-sm bg-[#17151d] text-[#e9f05a]">
               <ArrowRight size={15} />
             </span>
           </div>
-          <p className="mt-4 text-sm leading-6 text-foreground/62">Open the first working module.</p>
+          <p className="mt-4 text-sm leading-6 text-[#17151d]/68">Open the first working module.</p>
         </button>
       </div>
     </AnimatedElement>
@@ -571,13 +549,13 @@ function HeroSignalGrid({ onNavigate }: QuantinaPageProps) {
 
 function HeroSignalCard({ icon: Icon, title, value, note }: { icon: LucideIcon; title: string; value: string; note: string }) {
   return (
-    <article className="min-h-[132px] rounded-lg border border-white/10 bg-[#2f2f2f]/55 p-4 text-white backdrop-blur-2xl transition hover:bg-[#2f2f2f]/70">
+    <article className="min-h-[132px] rounded-sm border-2 border-white/30 bg-[#f1eff5] p-4 text-[#17151d] transition hover:-translate-y-0.5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-base font-semibold">{title}</p>
-          <p className="mt-1 text-xs text-white/55">{note}</p>
+          <p className="mt-1 text-xs text-[#17151d]/55">{note}</p>
         </div>
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-primary">
+        <span className="flex h-8 w-8 items-center justify-center rounded-sm bg-[#6246e5] text-white">
           <Icon size={15} />
         </span>
       </div>
@@ -588,69 +566,22 @@ function HeroSignalCard({ icon: Icon, title, value, note }: { icon: LucideIcon; 
 
 function HeroWorkflowTicker() {
   const steps = ["Identify", "Formalize", "Recruit", "Simulate", "Benchmark", "Publish", "Industrialize"];
-  const tickerSteps = [...steps, ...steps];
 
   return (
     <AnimatedElement direction="up" delay={860} className="mt-9 hidden max-w-3xl sm:block">
-      <div className="inline-flex items-center rounded-full border border-[#efce96]/45 bg-[#efce96]/16 px-4 py-2 text-xs font-semibold tracking-wide text-white">
+      <div className="inline-flex items-center rounded-sm border border-[#ff6474] px-4 py-2 text-xs font-semibold tracking-wide text-[#ff9aa5]">
         Evidence-first quantum transfer
       </div>
-      <div className="quantina-ticker-mask relative mt-3 h-11 overflow-hidden">
-        <div className="quantina-ticker flex w-max items-center gap-5">
-          {tickerSteps.map((step, index) => (
+      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-3">
+          {steps.map((step, index) => (
             <div key={`${step}-${index}`} className="flex items-center gap-3">
-              <span className="h-6 w-px rounded-full bg-[#efce96]/55" />
-              <span className="whitespace-nowrap text-xs font-semibold uppercase text-foreground/58">{step}</span>
+              <span className="h-1.5 w-1.5 bg-[#e9f05a]" />
+              <span className="whitespace-nowrap text-xs font-semibold uppercase text-white/58">{step}</span>
             </div>
           ))}
-        </div>
-        <span className="absolute left-1/2 top-0 h-10 w-0.5 -translate-x-1/2 rounded-full bg-[#efce96]" />
       </div>
     </AnimatedElement>
   );
-}
-
-function useQuantinaHeroVideoEnabled() {
-  const [enabled, setEnabled] = useState(false);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(min-width: 768px) and (prefers-reduced-motion: no-preference)");
-    const update = () => setEnabled(mediaQuery.matches);
-
-    update();
-    mediaQuery.addEventListener("change", update);
-    return () => mediaQuery.removeEventListener("change", update);
-  }, []);
-
-  return enabled;
-}
-
-function useCountUp(target: number, durationMs: number) {
-  const [value, setValue] = useState(0);
-
-  useEffect(() => {
-    let animationFrame = 0;
-    let startTime = 0;
-
-    const tick = (timestamp: number) => {
-      if (!startTime) {
-        startTime = timestamp;
-      }
-
-      const progress = Math.min((timestamp - startTime) / durationMs, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setValue(Math.round(eased * target));
-
-      if (progress < 1) {
-        animationFrame = window.requestAnimationFrame(tick);
-      }
-    };
-
-    animationFrame = window.requestAnimationFrame(tick);
-    return () => window.cancelAnimationFrame(animationFrame);
-  }, [durationMs, target]);
-
-  return value;
 }
 
 type AnimationDirection = "up" | "down" | "left" | "right" | "scale";
@@ -666,51 +597,11 @@ function AnimatedElement({
   delay?: number;
   direction?: AnimationDirection;
 }) {
-  const elementRef = useRef<HTMLDivElement | null>(null);
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    const element = elementRef.current;
-    if (!element) {
-      return;
-    }
-
-    if (!("IntersectionObserver" in window)) {
-      setIsVisible(true);
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.unobserve(entry.target);
-        }
-      },
-      { threshold: 0.1 },
-    );
-
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-
-  const hiddenTransforms: Record<AnimationDirection, string> = {
-    up: "translate3d(0, 40px, 0) scale(1)",
-    down: "translate3d(0, -40px, 0) scale(1)",
-    left: "translate3d(-40px, 0, 0) scale(1)",
-    right: "translate3d(40px, 0, 0) scale(1)",
-    scale: "translate3d(0, 0, 0) scale(0.9)",
-  };
-
   return (
     <div
-      ref={elementRef}
-      className={className}
+      className={`quantina-enter quantina-enter-${direction} ${className}`}
       style={{
-        opacity: isVisible ? 1 : 0,
-        transform: isVisible ? "translate3d(0, 0, 0) scale(1)" : hiddenTransforms[direction],
-        transition: "opacity 800ms cubic-bezier(0.16, 1, 0.3, 1), transform 800ms cubic-bezier(0.16, 1, 0.3, 1)",
-        transitionDelay: `${delay}ms`,
+        animationDelay: `${delay}ms`,
       }}
     >
       {children}
@@ -728,19 +619,19 @@ function FlowSection() {
   ];
 
   return (
-    <section className="border-y border-white/10 bg-white/[0.025] px-5 py-10 sm:px-8 lg:px-10">
+    <section className="border-y border-black/10 bg-[#e9f05a] px-5 py-12 text-[#17151d] sm:px-8 lg:px-10">
       <div className="mx-auto grid max-w-7xl gap-4 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
         <div>
-          <p className="text-sm font-medium uppercase text-primary/75">Operating logic</p>
-          <h2 className="mt-2 text-3xl font-semibold text-white">From industrial challenges to quantum experiments.</h2>
+          <p className="text-sm font-medium uppercase text-[#5138ca]">Operating logic</p>
+          <h2 className="mt-2 text-3xl font-semibold text-[#17151d]">From industrial challenges to quantum experiments.</h2>
         </div>
-        <div className="grid gap-3 md:grid-cols-5">
+        <div className="grid border-t border-black/25 md:grid-cols-5 md:border-l md:border-t-0">
           {flow.map(({ title, icon: Icon }, index) => (
-            <div key={title} className="relative rounded-md border border-white/10 bg-[#0b1119]/85 p-4">
-              <Icon size={18} className="text-primary" />
-              <p className="mt-4 text-sm font-semibold leading-5 text-white">{title}</p>
+            <div key={title} className="relative border-b border-black/25 p-4 md:border-b-0 md:border-r">
+              <Icon size={18} className="text-[#5138ca]" />
+              <p className="mt-4 text-sm font-semibold leading-5 text-[#17151d]">{title}</p>
               {index < flow.length - 1 ? (
-                <ArrowRight className="absolute -right-3 top-1/2 z-10 hidden -translate-y-1/2 text-primary md:block" size={18} />
+                <ArrowRight className="absolute -right-2.5 top-1/2 z-10 hidden -translate-y-1/2 bg-[#e9f05a] text-[#5138ca] md:block" size={18} />
               ) : null}
             </div>
           ))}
@@ -752,9 +643,10 @@ function FlowSection() {
 
 function ProjectSection() {
   return (
-    <section id="project" className="scroll-mt-40 px-5 py-20 sm:px-8 lg:px-10">
+    <section id="project" className="scroll-mt-40 bg-[#f1eff5] px-5 py-24 text-[#17151d] sm:px-8 lg:px-10">
       <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
         <SectionIntro
+          tone="light"
           eyebrow="The project"
           title="A regional experimentation program for quantum technologies in industry."
           text="QuantINA exists to test real industrial problems with research-grade methodology, strong classical baselines and clear decisions about what quantum, hybrid or quantum-inspired methods can actually bring."
@@ -762,7 +654,7 @@ function ProjectSection() {
 
         <div className="grid gap-4">
           {projectPrinciples.map((item) => (
-            <ProgramCard key={item.title} item={item} />
+            <ProgramCard key={item.title} item={item} tone="light" />
           ))}
         </div>
       </div>
@@ -776,7 +668,7 @@ function UseCasesSection() {
   const SelectedIcon = selected.icon;
 
   return (
-    <section id="use-cases" className="scroll-mt-40 bg-[#07100f] px-5 py-20 sm:px-8 lg:px-10">
+    <section id="use-cases" className="scroll-mt-40 bg-[#17151d] px-5 py-24 sm:px-8 lg:px-10">
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
           <SectionIntro
@@ -784,13 +676,13 @@ function UseCasesSection() {
             title="Industrial problems studied through a rigorous quantum and HPC lens."
             text="Each case starts with the industrial constraint, then moves through modelling, baseline selection, algorithmic exploration and documented benchmarking."
           />
-          <div className="rounded-md border border-amber-300/20 bg-amber-300/10 px-4 py-3 text-sm font-medium text-amber-100">
+          <div className="rounded-sm bg-[#e9f05a] px-4 py-3 text-sm font-semibold text-[#17151d]">
             No quantum advantage claim. Evidence first.
           </div>
         </div>
 
-        <div className="grid overflow-hidden rounded-lg border border-white/10 bg-[#0b1119]/82 shadow-[0_28px_90px_rgba(0,0,0,0.24)] lg:grid-cols-[0.38fr_0.62fr]">
-          <div className="border-b border-white/10 p-2 lg:border-b-0 lg:border-r">
+        <div className="grid overflow-hidden rounded-sm border border-white/20 bg-[#201d27] lg:grid-cols-[0.38fr_0.62fr]">
+          <div className="border-b border-white/15 p-2 lg:border-b-0 lg:border-r">
             <div className="flex gap-2 overflow-x-auto lg:grid">
               {useCases.map((useCase, index) => {
                 const Icon = useCase.icon;
@@ -801,13 +693,13 @@ function UseCasesSection() {
                     type="button"
                     onClick={() => setSelectedIndex(index)}
                     className={[
-                      "flex min-w-[210px] items-center gap-3 rounded-md border px-4 py-3 text-left transition lg:min-w-0",
+                      "flex min-w-[210px] items-center gap-3 rounded-sm border-l-4 px-4 py-3 text-left transition lg:min-w-0",
                       active
-                        ? "border-primary/35 bg-primary/10 text-white"
-                        : "border-transparent text-foreground/55 hover:border-white/10 hover:bg-white/[0.04] hover:text-white",
+                        ? "border-[#ff6474] bg-[#302a3d] text-white"
+                        : "border-transparent text-white/55 hover:border-white/30 hover:bg-white/[0.035] hover:text-white",
                     ].join(" ")}
                   >
-                    <span className={active ? "text-primary" : useCase.accent}>
+                    <span className={active ? "text-[#e9f05a]" : useCase.accent}>
                       <Icon size={18} />
                     </span>
                     <span className="min-w-0">
@@ -820,14 +712,13 @@ function UseCasesSection() {
             </div>
           </div>
 
-          <article className="relative min-h-[430px] overflow-hidden p-6 sm:p-8 lg:p-10">
-            <div aria-hidden="true" className="absolute right-0 top-0 h-48 w-48 bg-[radial-gradient(circle,rgba(45,212,191,0.12),transparent_68%)]" />
-            <div className="relative z-10 flex h-full flex-col">
+          <article className="relative min-h-[430px] overflow-hidden border-t-4 border-[#6246e5] p-6 sm:p-8 lg:p-10">
+            <div className="flex h-full flex-col">
               <div className="flex items-start justify-between gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-md border border-primary/25 bg-primary/10 text-primary">
+                <div className="flex h-12 w-12 items-center justify-center rounded-sm bg-[#6246e5] text-white">
                   <SelectedIcon size={23} />
                 </div>
-                <span className="rounded-md border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
+                <span className="rounded-sm bg-[#e9f05a] px-3 py-1.5 text-xs font-semibold text-[#17151d]">
                   {selected.status}
                 </span>
               </div>
@@ -850,7 +741,7 @@ function UseCasesSection() {
 
 function WorkflowSection() {
   return (
-    <section id="method" className="scroll-mt-40 px-5 py-20 sm:px-8 lg:px-10">
+    <section id="method" className="scroll-mt-40 bg-[#6246e5] px-5 py-24 sm:px-8 lg:px-10">
       <div className="mx-auto max-w-7xl">
         <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
           <SectionIntro
@@ -862,10 +753,10 @@ function WorkflowSection() {
           <div className="grid gap-3">
             {workflow.map((step, index) => (
               <div key={step} className="grid grid-cols-[3.25rem_1fr] items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-md border border-primary/25 bg-primary/10 font-mono text-sm font-semibold text-primary">
+                <div className="flex h-12 w-12 items-center justify-center rounded-sm bg-[#e9f05a] font-mono text-sm font-semibold text-[#17151d]">
                   {String(index + 1).padStart(2, "0")}
                 </div>
-                <div className="rounded-md border border-white/10 bg-white/[0.04] px-4 py-3">
+                <div className="border-b border-white/35 px-4 py-3">
                   <p className="font-semibold text-white">{step}</p>
                 </div>
               </div>
@@ -886,48 +777,48 @@ function WorkflowSection() {
 
 function EcosystemSection() {
   return (
-    <section id="ecosystem" className="scroll-mt-40 border-y border-white/10 bg-[#090e16] px-5 py-20 sm:px-8 lg:px-10">
+    <section id="ecosystem" className="scroll-mt-40 border-y border-black/10 bg-[#f1eff5] px-5 py-24 text-[#17151d] sm:px-8 lg:px-10">
       <div className="mx-auto max-w-7xl">
-        <div className="grid gap-10 border-b border-white/10 pb-12 lg:grid-cols-[1.15fr_0.85fr] lg:items-end">
+        <div className="grid gap-10 border-b border-black/15 pb-12 lg:grid-cols-[1.15fr_0.85fr] lg:items-end">
           <div className="max-w-4xl">
             <div className="mb-6 flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-md border border-primary/25 bg-primary/10 p-1.5 shadow-[0_0_32px_hsl(var(--primary)/0.15)]">
+              <div className="flex h-14 w-14 items-center justify-center rounded-sm border border-[#6246e5] bg-white p-1.5">
                 <img className="h-full w-full object-contain" src={quantinaLogoSrc} alt="QuantINA" />
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase text-[#ff4f74]">Led by the Maison du Quantique</p>
-                <p className="mt-1 text-sm font-medium text-foreground/55">Nouvelle-Aquitaine quantum ecosystem</p>
+                <p className="mt-1 text-sm font-medium text-[#5f5b68]">Nouvelle-Aquitaine quantum ecosystem</p>
               </div>
             </div>
-            <h2 className="max-w-4xl text-4xl font-semibold leading-tight text-white sm:text-5xl">
+            <h2 className="max-w-4xl text-4xl font-semibold leading-tight text-[#17151d] sm:text-5xl">
               QuantINA is carried by a regional network built for research, transfer and execution.
             </h2>
           </div>
-          <p className="max-w-xl text-base leading-8 text-foreground/62 lg:justify-self-end">
+          <p className="max-w-xl text-base leading-8 text-[#5f5b68] lg:justify-self-end">
             The Maison du Quantique brings together universities, national research organisations, laboratories, innovation networks and
             computing infrastructures to turn industrial challenges into rigorous quantum and HPC projects.
           </p>
         </div>
 
-        <div className="grid gap-5 border-b border-white/10 py-8 sm:grid-cols-3">
+        <div className="grid gap-5 border-b border-black/15 py-8 sm:grid-cols-3">
           {[
             ["15", "institutions and research networks"],
             ["1", "regional coordination hub"],
             ["Research → industry", "a shared transfer pathway"],
           ].map(([value, label]) => (
             <div key={label} className="border-l-2 border-[#ff4f74] pl-4">
-              <p className="text-xl font-semibold text-white">{value}</p>
-              <p className="mt-1 text-sm text-foreground/48">{label}</p>
+              <p className="text-xl font-semibold text-[#17151d]">{value}</p>
+              <p className="mt-1 text-sm text-[#5f5b68]">{label}</p>
             </div>
           ))}
         </div>
 
         <div className="pt-10">
           <div className="mb-7 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
-            <p className="text-xs font-semibold uppercase text-foreground/45">The Maison du Quantique partner network</p>
-            <p className="text-xs text-foreground/35">Research · innovation · infrastructure · transfer</p>
+            <p className="text-xs font-semibold uppercase text-[#5f5b68]">The Maison du Quantique partner network</p>
+            <p className="text-xs text-[#5f5b68]">Research · innovation · infrastructure · transfer</p>
           </div>
-          <div className="overflow-hidden rounded-lg border border-white/12 bg-[#f4f7f8] p-4 shadow-[0_30px_100px_rgba(0,0,0,0.32)] sm:p-8">
+          <div className="overflow-hidden rounded-sm border border-black/15 bg-white p-4 sm:p-8">
             <img
               alt="Maison du Quantique partner institutions"
               className="mx-auto block h-auto w-full max-w-[1120px] object-contain"
@@ -944,7 +835,7 @@ function EcosystemSection() {
 
 function DeliverablesSection() {
   return (
-    <section id="outputs" className="scroll-mt-40 bg-[#07100f] px-5 py-20 sm:px-8 lg:px-10">
+    <section id="outputs" className="scroll-mt-40 bg-[#17151d] px-5 py-24 sm:px-8 lg:px-10">
       <div className="mx-auto max-w-7xl">
         <SectionIntro
           eyebrow="Results and deliverables"
@@ -963,10 +854,11 @@ function DeliverablesSection() {
 
 function JoinSection() {
   return (
-    <section id="join" className="scroll-mt-40 px-5 py-20 sm:px-8 lg:px-10">
+    <section id="join" className="scroll-mt-40 bg-[#f1eff5] px-5 py-24 text-[#17151d] sm:px-8 lg:px-10">
       <div className="mx-auto max-w-7xl">
         <div className="grid gap-8 lg:grid-cols-[0.72fr_1.28fr] lg:items-start">
           <SectionIntro
+            tone="light"
             eyebrow="Join QuantINA"
             title="Connect with the QuantINA coordination team."
             text="Companies, researchers and students can enter the program through a coordinated HYBQUANT and regional initiative team."
@@ -983,40 +875,49 @@ function JoinSection() {
   );
 }
 
-function SectionIntro({ eyebrow, title, text }: { eyebrow: string; title: string; text: string }) {
+function SectionIntro({
+  eyebrow,
+  title,
+  text,
+  tone = "dark",
+}: {
+  eyebrow: string;
+  title: string;
+  text: string;
+  tone?: "dark" | "light";
+}) {
+  const isLight = tone === "light";
+
   return (
     <div className="max-w-3xl">
-      <p className="text-sm font-medium uppercase text-primary/75">{eyebrow}</p>
-      <h2 className="mt-2 text-3xl font-semibold leading-tight text-white sm:text-4xl">{title}</h2>
-      <p className="mt-4 text-sm leading-7 text-foreground/58 sm:text-base">{text}</p>
+      <p className={isLight ? "text-sm font-medium uppercase text-[#5138ca]" : "text-sm font-medium uppercase text-[#e9f05a]"}>{eyebrow}</p>
+      <h2 className={isLight ? "mt-2 text-3xl font-semibold leading-tight text-[#17151d] sm:text-4xl" : "mt-2 text-3xl font-semibold leading-tight text-white sm:text-4xl"}>
+        {title}
+      </h2>
+      <p className={isLight ? "mt-4 text-sm leading-7 text-[#5f5b68] sm:text-base" : "mt-4 text-sm leading-7 text-white/62 sm:text-base"}>
+        {text}
+      </p>
     </div>
   );
 }
 
-function HeroMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border border-white/10 bg-white/[0.045] p-4 backdrop-blur">
-      <p className="text-xs text-foreground/45">{label}</p>
-      <p className="mt-2 text-lg font-semibold text-white">{value}</p>
-    </div>
-  );
-}
-
-function ProgramCard({ item }: { item: ProgramItem }) {
+function ProgramCard({ item, tone = "dark" }: { item: ProgramItem; tone?: "dark" | "light" }) {
   const Icon = item.icon;
+  const isLight = tone === "light";
+
   return (
-    <article className="rounded-md border border-white/10 bg-white/[0.04] p-5">
-      <Icon size={20} className="text-primary" />
-      <h3 className="mt-5 text-lg font-semibold text-white">{item.title}</h3>
-      <p className="mt-3 text-sm leading-6 text-foreground/58">{item.text}</p>
+    <article className={isLight ? "border-t border-black/20 py-5" : "border-t border-white/20 py-5"}>
+      <Icon size={20} className={isLight ? "text-[#6246e5]" : "text-[#ff6474]"} />
+      <h3 className={isLight ? "mt-5 text-lg font-semibold text-[#17151d]" : "mt-5 text-lg font-semibold text-white"}>{item.title}</h3>
+      <p className={isLight ? "mt-3 text-sm leading-6 text-[#5f5b68]" : "mt-3 text-sm leading-6 text-white/58"}>{item.text}</p>
     </article>
   );
 }
 
 function TeamMemberCard({ member }: { member: TeamMember }) {
   return (
-    <article className="group overflow-hidden rounded-md border border-white/10 bg-white/[0.04] transition hover:border-primary/35 hover:bg-white/[0.06]">
-      <div className="relative aspect-[1.18] overflow-hidden bg-black/25">
+    <article className="group overflow-hidden rounded-sm border border-black/15 bg-white transition hover:-translate-y-0.5 hover:border-[#6246e5]">
+      <div className="relative aspect-[1.18] overflow-hidden bg-[#ddd9e4]">
         <img
           alt={`${member.name} portrait`}
           className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.035]"
@@ -1024,17 +925,16 @@ function TeamMemberCard({ member }: { member: TeamMember }) {
           loading="lazy"
           src={member.photo}
         />
-        <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-[#05070d]/78 via-transparent to-transparent" />
-        <span className="absolute bottom-4 left-4 rounded-md border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary backdrop-blur-xl">
+        <span className="absolute bottom-4 left-4 rounded-sm bg-[#e9f05a] px-3 py-1 text-xs font-semibold text-[#17151d]">
           {member.affiliation}
         </span>
       </div>
       <div className="p-5">
-        <p className="text-xs font-semibold uppercase tracking-wide text-primary/72">{member.role}</p>
-        <h3 className="mt-2 text-xl font-semibold text-white">{member.name}</h3>
+        <p className="text-xs font-semibold uppercase tracking-wide text-[#5138ca]">{member.role}</p>
+        <h3 className="mt-2 text-xl font-semibold text-[#17151d]">{member.name}</h3>
         <a
           href={`mailto:${member.email}`}
-          className="mt-4 inline-flex max-w-full items-center gap-2 rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm font-medium text-foreground/62 transition hover:border-primary/35 hover:text-primary"
+          className="mt-4 inline-flex max-w-full items-center gap-2 rounded-sm border border-black/15 px-3 py-2 text-sm font-medium text-[#5f5b68] transition hover:border-[#6246e5] hover:text-[#5138ca]"
         >
           <Mail size={15} className="shrink-0" />
           <span className="truncate">{member.email}</span>
@@ -1055,10 +955,10 @@ function CaseLine({ label, value }: { label: string; value: string }) {
 
 function ModelPillar({ icon: Icon, title, text }: { icon: LucideIcon; title: string; text: string }) {
   return (
-    <div className="rounded-md border border-white/10 bg-white/[0.04] p-4">
-      <Icon size={18} className="text-primary" />
+    <div className="border-t border-white/40 py-4">
+      <Icon size={18} className="text-[#e9f05a]" />
       <h3 className="mt-4 text-sm font-semibold text-white">{title}</h3>
-      <p className="mt-2 text-xs leading-5 text-foreground/52">{text}</p>
+      <p className="mt-2 text-xs leading-5 text-white/60">{text}</p>
     </div>
   );
 }

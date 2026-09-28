@@ -56,11 +56,6 @@ input {
     linear-gradient(135deg, #05070d 0%, #0a1020 52%, #06100f 100%);
 }
 
-.bg-quantina {
-  background:
-    linear-gradient(135deg, #05070d 0%, #101018 38%, #071412 72%, #140d09 100%);
-}
-
 .bg-card-premium {
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.105), rgba(255, 255, 255, 0.026)),
@@ -77,48 +72,76 @@ input {
   will-change: opacity, transform;
 }
 
-.quantina-hero-video {
-  backface-visibility: hidden;
-  contain: paint;
-  pointer-events: none;
-  transform: translate3d(0, 0, 0);
+.quantina-theme {
+  --foreground: 255 20% 96%;
+  --primary: 64 82% 65%;
 }
 
-.quantina-ticker-mask {
-  mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%);
+.quantina-enter {
+  animation-duration: 520ms;
+  animation-fill-mode: both;
+  animation-timing-function: ease-out;
 }
 
-.quantina-ticker {
-  animation: quantina-ticker 14s linear infinite;
+.quantina-enter-up,
+.quantina-enter-scale {
+  animation-name: quantina-enter-up;
 }
 
-.quantina-spin-bg {
-  animation: quantina-spin-slow 30s linear infinite;
+.quantina-enter-down {
+  animation-name: quantina-enter-down;
 }
 
-@keyframes quantina-ticker {
-  0% {
+.quantina-enter-left {
+  animation-name: quantina-enter-left;
+}
+
+.quantina-enter-right {
+  animation-name: quantina-enter-right;
+}
+
+@keyframes quantina-enter-up {
+  from {
+    transform: translateY(12px);
+  }
+
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes quantina-enter-down {
+  from {
+    transform: translateY(-12px);
+  }
+
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes quantina-enter-left {
+  from {
+    transform: translateX(-12px);
+  }
+
+  to {
     transform: translateX(0);
   }
-
-  100% {
-    transform: translateX(-50%);
-  }
 }
 
-@keyframes quantina-spin-slow {
-  0% {
-    transform: rotate(0deg) scale(1.08);
+@keyframes quantina-enter-right {
+  from {
+    transform: translateX(12px);
   }
 
-  100% {
-    transform: rotate(360deg) scale(1.08);
+  to {
+    transform: translateX(0);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .quantina-ticker,
-  .quantina-spin-bg {
+  .quantina-enter {
     animation: none;
   }
 }
