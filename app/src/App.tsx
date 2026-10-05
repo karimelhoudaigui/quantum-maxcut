@@ -6,10 +6,12 @@ import { GraphCanvas } from "./components/GraphCanvas";
 import { GraphConfigurator } from "./components/GraphConfigurator";
 import { PipelineRunner } from "./components/PipelineRunner";
 import { ResultsDashboard } from "./components/ResultsDashboard";
+import { AldSimulationPage } from "./pages/AldSimulationPage";
 import { HomePage } from "./pages/HomePage";
 import { QuantinaPage } from "./pages/QuantinaPage";
 
 const maxCutRoute = "/simulations/maxcut";
+const aldRoute = "/simulations/ald";
 const quantinaRoute = "/quantina";
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const appRoot = basePath ? `${basePath}/` : "/";
@@ -23,6 +25,9 @@ function routeFromLocation(pathname: string) {
   const simulationRoute = searchParams.get("simulation");
   if (simulationRoute === "maxcut") {
     return maxCutRoute;
+  }
+  if (simulationRoute === "ald") {
+    return aldRoute;
   }
 
   const pageRoute = searchParams.get("page");
@@ -55,7 +60,9 @@ export default function App() {
         ? "QuantINA - Quantum Industrial Networks in Nouvelle-Aquitaine"
         : route === maxCutRoute
           ? "Neutral-atom MaxCut Lab"
-          : "Quantum Simulation Platform";
+          : route === aldRoute
+            ? "ALD Quantum Chemistry Lab"
+            : "Quantum Simulation Platform";
   }, [route]);
 
   useEffect(() => {
@@ -75,7 +82,13 @@ export default function App() {
     }
 
     const nextPath =
-      nextRoute === maxCutRoute ? `${appRoot}?simulation=maxcut` : nextRoute === quantinaRoute ? `${appRoot}?page=quantina` : appRoot;
+      nextRoute === maxCutRoute
+        ? `${appRoot}?simulation=maxcut`
+        : nextRoute === aldRoute
+          ? `${appRoot}?simulation=ald`
+          : nextRoute === quantinaRoute
+            ? `${appRoot}?page=quantina`
+            : appRoot;
     window.history.pushState({}, "", nextPath);
     setRoute(nextRoute);
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -83,6 +96,10 @@ export default function App() {
 
   if (route === quantinaRoute) {
     return <QuantinaPage onNavigate={navigate} />;
+  }
+
+  if (route === aldRoute) {
+    return <AldSimulationPage onNavigate={navigate} />;
   }
 
   if (route !== maxCutRoute) {

@@ -197,3 +197,63 @@ export interface FamilyResultRow {
   family: string;
   metrics: Record<string, number | string>;
 }
+
+/** Requête quantum-ald-simulation (quantum_ald.experiment.ExperimentConfig),
+ *  relayée telle quelle à hpc-bridge (kind "ald_pipeline", champ "experiment")
+ *  puis à ExperimentConfig.from_dict côté run_ald_job.py — cf.
+ *  results/experiments/h2/request.json dans ce dépôt pour un gabarit réel. */
+export type AldMoleculePreset = "h2" | "lih" | "h2o";
+export type AldMethod = "hf" | "casci" | "fci" | "vqe";
+
+export interface AldAtomSpec {
+  symbol: string;
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface AldMoleculeSpec {
+  name?: string;
+  atoms: AldAtomSpec[];
+  charge: number;
+  spin: number;
+  basis: string;
+  unit: "angstrom" | "bohr";
+}
+
+export interface AldActiveSpaceConfig {
+  n_active_electrons: number;
+  n_active_orbitals: number;
+  orbital_indices?: number[];
+  selection_mode?: "manual" | "auto";
+}
+
+export interface AldAnsatzConfig {
+  ansatz_type: "uccsd";
+  reps: number;
+  preserve_spin: boolean;
+  generalized: boolean;
+  initialization: "zeros" | "random";
+}
+
+export interface AldSolverConfig {
+  optimizer: "slsqp";
+  maxiter: number;
+  tolerance: number;
+  initialization: "ansatz_default" | "random";
+  random_seeds: number[];
+  random_scale: number;
+  execution_mode: "exact_statevector";
+}
+
+export interface AldExperimentConfig {
+  schema_version: "1";
+  molecule: AldMoleculeSpec;
+  active_spaces: AldActiveSpaceConfig[];
+  methods: AldMethod[];
+  mapping: "jordan-wigner";
+  ansatz: AldAnsatzConfig | null;
+  solver: AldSolverConfig | null;
+  execution_mode: "exact_statevector";
+  chemical_accuracy_hartree: number;
+}

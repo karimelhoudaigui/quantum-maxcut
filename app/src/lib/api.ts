@@ -1,4 +1,5 @@
 import type {
+  AldExperimentConfig,
   AnnealingConfig,
   FamilyResultRow,
   GraphGenerateRequest,
@@ -125,6 +126,22 @@ export async function runHpcPipeline(
       annealing,
       seed: 1234,
       enable_animations: enableAnimations,
+      resources,
+    }),
+  });
+}
+
+export async function runAldHpcPipeline(
+  experiment: AldExperimentConfig,
+  resources?: HpcResourcesRequest,
+): Promise<HpcJob> {
+  return request<HpcJob>("/api/jobs", {
+    baseUrl: HPC_BRIDGE_URL,
+    method: "POST",
+    headers: { Authorization: `Bearer ${getHpcToken()}` },
+    body: JSON.stringify({
+      kind: "ald_pipeline",
+      experiment,
       resources,
     }),
   });

@@ -33,7 +33,7 @@ export const simulationModules: SimulationModule[] = [
     category: "Quantum chemistry",
     status: "available",
     tags: ["Chemistry", "Materials", "Simulation"],
-    route: "https://karimelhoudaigui.github.io/quantum-ald-simulation/",
+    route: "/simulations/ald",
     icon: FlaskConical,
     visual: "layers",
   },
