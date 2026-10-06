@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+import path from "node:path";
 
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
@@ -35,6 +36,18 @@ export default defineConfig(({ mode }) => {
   return {
     base,
     plugins: [react()],
+    resolve: {
+      // "@qchem-lab" pointe vers vendor/qchem-lab, peuplé par
+      // scripts/fetch-qchem-lab.sh (clone du dépôt quantum-ald-simulation de
+      // Karim, jamais committé ici, cf. .gitignore) — permet d'importer ses
+      // composants (MoleculeCanvas.tsx notamment, pour la vue 3D de la page
+      // ALD) sans dupliquer son code dans ce dépôt. À exécuter une fois en
+      // dev local (`sh scripts/fetch-qchem-lab.sh`) ; fait automatiquement
+      // avant `npm run build` dans Dockerfile(.fast).
+      alias: {
+        "@qchem-lab": path.resolve(__dirname, "vendor/qchem-lab"),
+      },
+    },
     define: {
       // Vite `define` fait une substitution textuelle brute : la valeur ici
       // remplace __BUILD_INFO__ telle quelle dans le code, sans guillemets

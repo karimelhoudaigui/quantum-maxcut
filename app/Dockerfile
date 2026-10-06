@@ -28,6 +28,12 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
+# Vendoring de qchem-lab (dépôt quantum-ald-simulation de Karim, cf.
+# scripts/fetch-qchem-lab.sh) pour la vue 3D de la page ALD : un second
+# `git clone`, pas une copie entretenue à la main dans ce dépôt — même
+# esprit que hpc_worker.py --quantum-repo côté Python. git n'est pas dans
+# node:20-alpine par défaut.
+RUN apk add --no-cache git && sh scripts/fetch-qchem-lab.sh
 RUN VITE_COMMIT_HASH="${GIT_COMMIT:-$OPENSHIFT_BUILD_COMMIT}" VITE_COMMIT_DATE="$GIT_COMMIT_DATE" \
     npm run build -- --base /
 

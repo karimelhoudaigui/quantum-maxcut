@@ -38,6 +38,10 @@ node_modules/
 .env
 .env.local
 .env.*.local
+# Code de qchem-lab (dépôt quantum-ald-simulation de Karim) vendored par
+# app/scripts/fetch-qchem-lab.sh pour la vue 3D de la page ALD — jamais
+# committé ici, reconstruit à chaque build/dev (cf. app/vite.config.ts).
+app/vendor/
 
 # OS
 .DS_Store

@@ -14,8 +14,21 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    // Miroir de l'alias Vite "@qchem-lab" (cf. vite.config.ts) pour que
+    // tsc -b résolve aussi les imports vers vendor/qchem-lab (dépôt
+    // quantum-ald-simulation de Karim, cloné par scripts/fetch-qchem-lab.sh,
+    // jamais committé ici).
+    "paths": {
+      "@qchem-lab/*": ["vendor/qchem-lab/*"]
+    }
   },
+  // vendor/qchem-lab n'est volontairement pas dans "include" : seuls les
+  // fichiers qu'on importe réellement depuis src/ (MoleculeCanvas.tsx et ses
+  // propres dépendances) entrent dans le programme TS (résolution
+  // transitive) — pas ses fichiers de test (*.test.tsx, qui dépendent de
+  // vitest/jsdom/testing-library, absents de ce package.json).
   "include": ["src"],
   "references": []
 }

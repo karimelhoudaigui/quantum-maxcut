@@ -45,6 +45,11 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
+# cf. Dockerfile pour le détail (identique, non dupliqué ici) : vendoring de
+# qchem-lab via un second `git clone` plutôt qu'une copie entretenue à la
+# main. BASE_IMAGE (node:20-alpine ou quantum-maxcut-frontend-base) n'a pas
+# forcément git non plus.
+RUN apk add --no-cache git && sh scripts/fetch-qchem-lab.sh
 RUN VITE_COMMIT_HASH="${GIT_COMMIT:-$OPENSHIFT_BUILD_COMMIT}" VITE_COMMIT_DATE="$GIT_COMMIT_DATE" \
     npm run build -- --base /
 

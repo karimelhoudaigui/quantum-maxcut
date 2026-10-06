@@ -1,6 +1,7 @@
 import { ArrowLeft, Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { AldMoleculeCanvas } from "../components/AldMoleculeCanvas";
 import { AldPipelineRunner } from "../components/AldPipelineRunner";
 import { AldResultsDashboard } from "../components/AldResultsDashboard";
 
@@ -45,6 +46,7 @@ export function AldSimulationPage({ onNavigate }: { onNavigate: (route: string) 
             </button>
           </div>
           <AldPipelineRunner />
+          <AldMoleculeCanvas />
         </main>
         <AldResultsDashboard />
       </div>

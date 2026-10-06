@@ -131,6 +131,7 @@ Frontend:
 ```bash
 cd app
 npm install
+sh scripts/fetch-qchem-lab.sh  # vendors qchem-lab (quantum-ald-simulation) for the ALD page's 3D molecule view — see script header
 npm run dev
 ```
 
