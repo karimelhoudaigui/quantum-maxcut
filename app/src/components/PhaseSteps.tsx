@@ -15,7 +15,11 @@ export interface PhaseStep {
   status: StepStatus;
   metric_label: string | null;
   metric_value: number | string | null;
-  duration_seconds?: number;
+  // number | null | undefined : certaines phases ald_pipeline (validate,
+  // comparison) passent directement à "completed" sans "running" préalable
+  // côté quantum_ald (cf. experiment.py) — run_ald_job.py ne peut alors pas
+  // calculer de durée et envoie `null`, pas juste "absent" (cf. lib/aldPhases.ts).
+  duration_seconds?: number | null;
 }
 
 export const STEP_STATUS_STYLES: Record<StepStatus, string> = {
@@ -49,7 +53,10 @@ export function StepCard({ step }: { step: PhaseStep }) {
       <div className="mb-3 flex items-center justify-between">
         <span className={`text-xs font-medium uppercase ${STEP_STATUS_TEXT_STYLES[step.status]}`}>
           {step.status}
-          {step.duration_seconds !== undefined ? ` · ${step.duration_seconds.toFixed(2)}s` : ""}
+          {/* != null (pas !== undefined) : attrape aussi `null`, cf. le commentaire sur
+              PhaseStep.duration_seconds — un `null` qui passe ce test a fait planter
+              toute la page (TypeError sur .toFixed, cf. git blame). */}
+          {step.duration_seconds != null ? ` · ${step.duration_seconds.toFixed(2)}s` : ""}
         </span>
         <span className={STEP_STATUS_TEXT_STYLES[step.status]}>{icon}</span>
       </div>

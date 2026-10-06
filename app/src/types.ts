@@ -106,8 +106,10 @@ export interface HpcPhaseUpdate {
   status?: "completed" | "failed";
   completed_at: number;
   /** Pour "pulser" : inclut le temps de calcul du ground state (np.linalg.eigh × 2, négligeable en
-   *  pratique) en plus de la simulation qutip elle-même — cf. hybrid_graph_study.py, notify("pulser"). */
-  duration_seconds?: number;
+   *  pratique) en plus de la simulation qutip elle-même — cf. hybrid_graph_study.py, notify("pulser").
+   *  null (pas seulement absent) pour une phase ald_pipeline qui passe directement à "completed" sans
+   *  "running" préalable (validate/comparison) — run_ald_job.py ne peut alors pas calculer de durée. */
+  duration_seconds?: number | null;
   magnetization_series?: { times: number[]; magnetization: number[][] } | null;
   rounding_trials_series?: { seed: number; ratio_product: number }[] | null;
   /** Métrique propre à chaque phase, connue dès qu'elle se termine (pas seulement au résultat final). */
