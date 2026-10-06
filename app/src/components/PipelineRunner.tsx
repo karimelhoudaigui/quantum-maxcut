@@ -6,7 +6,7 @@ import { buildInfo, formatBuildInfoDate } from "../lib/buildInfo";
 import { usePipelineStore } from "../stores/pipelineStore";
 import { isHpcJobActive } from "../types";
 import type { HpcJobStatus, HpcPhaseUpdate, HpcRoundingProgress, PipelineStep } from "../types";
-import { formatMinutes, HpcResourceSettings } from "./HpcResourceSettings";
+import { formatMinutes, HpcResourceSettings, HpcWorkersStatus } from "./HpcResourceSettings";
 
 const HPC_STATUS_LABELS: Partial<Record<string, string>> = {
   queued_slurm: "queued on SLURM",
@@ -216,13 +216,7 @@ export function PipelineRunner() {
         </div>
       </div>
 
-      {workersKnown ? (
-        <p className="mb-3 -mt-2 text-right text-[11px] text-foreground/40">
-          {workerCount > 0
-            ? `${workerCount} HPC worker${workerCount > 1 ? "s" : ""} connected to hpc-bridge`
-            : "No HPC worker connected to hpc-bridge"}
-        </p>
-      ) : null}
+      <HpcWorkersStatus workers={workers} />
 
       <HpcResourceSettings capabilities={workerCapabilities} resources={hpcResources} onChange={setHpcResources} />
 

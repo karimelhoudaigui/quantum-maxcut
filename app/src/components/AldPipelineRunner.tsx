@@ -6,7 +6,7 @@ import { useAldStore } from "../stores/aldStore";
 import { isHpcJobActive } from "../types";
 import type { AldMethod, AldMoleculePreset, HpcJobStatus } from "../types";
 import { AldAdvancedConfig } from "./AldAdvancedConfig";
-import { HpcResourceSettings } from "./HpcResourceSettings";
+import { HpcResourceSettings, HpcWorkersStatus } from "./HpcResourceSettings";
 
 const HPC_STATUS_LABELS: Partial<Record<string, string>> = {
   queued_slurm: "queued on SLURM",
@@ -195,13 +195,7 @@ export function AldPipelineRunner() {
         </div>
       </div>
 
-      {workersKnown ? (
-        <p className="mb-3 -mt-2 text-right text-[11px] text-foreground/40">
-          {workerCount > 0
-            ? `${workerCount} HPC worker${workerCount > 1 ? "s" : ""} connected to hpc-bridge`
-            : "No HPC worker connected to hpc-bridge"}
-        </p>
-      ) : null}
+      <HpcWorkersStatus workers={workers} />
 
       {hpcRun.error || hpcJob ? (
         <div className={`mt-4 rounded-md border p-3 text-sm transition-colors duration-500 ${STEP_STATUS_STYLES[hpcBoxStatus]}`}>

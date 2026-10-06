@@ -1,6 +1,7 @@
 import { useMemo } from "react";
+import type { UseQueryResult } from "@tanstack/react-query";
 
-import type { HpcResourcesRequest, HpcWorkerCapabilities } from "../types";
+import type { HpcResourcesRequest, HpcWorker, HpcWorkerCapabilities } from "../types";
 
 // Extrait de PipelineRunner.tsx (MaxCut) pour être réutilisé tel quel par
 // AldPipelineRunner.tsx : le menu de paramétrage du run (partition/cœurs/
@@ -143,5 +144,41 @@ export function HpcResourceSettings({
         />
       </div>
     </details>
+  );
+}
+
+// Affiche le nombre de workers connectés (même ligne dans PipelineRunner.tsx
+// et AldPipelineRunner.tsx, cf. getWorkers()/usePipelineRunner()/
+// useAldPipelineRunner()) — et, nouveau, l'erreur elle-même quand la requête
+// /api/workers échoue (jusqu'ici totalement silencieux : `workersKnown`
+// restait simplement `false`, sans rien afficher, cf. hasHpcToken()). Un
+// échec de fetch() bloqué par CORS ne donne presque aucun détail exploitable
+// au JS (juste "Failed to fetch"/"NetworkError..." selon le navigateur, la
+// vraie raison — ex. origine non autorisée — n'est visible que dans les logs
+// serveur) ; on ne prétend donc pas deviner la cause précise, on affiche le
+// message brut du navigateur et la piste la plus fréquente rencontrée en
+// pratique (tester depuis une origine hors liste blanche CORS, cf.
+// SL_CORS_ORIGINS côté sl_server.py).
+export function HpcWorkersStatus({ workers }: { workers: UseQueryResult<HpcWorker[], Error> }) {
+  if (workers.isError) {
+    return (
+      <p className="mb-3 -mt-2 rounded-md border border-red-500/40 bg-red-500/10 px-2 py-1.5 text-right text-[11px] text-red-300">
+        Unable to reach hpc-bridge ({workers.error.message || "network error"}) — if you're testing from a
+        non-default origin (e.g. a network IP instead of localhost), check that it's allowed by SL_CORS_ORIGINS.
+      </p>
+    );
+  }
+
+  if (!workers.isSuccess) {
+    return null;
+  }
+
+  const workerCount = workers.data.length;
+  return (
+    <p className="mb-3 -mt-2 text-right text-[11px] text-foreground/40">
+      {workerCount > 0
+        ? `${workerCount} HPC worker${workerCount > 1 ? "s" : ""} connected to hpc-bridge`
+        : "No HPC worker connected to hpc-bridge"}
+    </p>
   );
 }
