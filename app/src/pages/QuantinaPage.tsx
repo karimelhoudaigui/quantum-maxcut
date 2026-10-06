@@ -205,7 +205,7 @@ const teamMembers: TeamMember[] = [
   {
     name: "Laurent Facq",
     role: "Research Engineer",
-    affiliation: "LaBRI",
+    affiliation: "IMB",
     email: "Laurent.Facq@math.u-bordeaux.fr",
     photo: `${import.meta.env.BASE_URL}media/team/laurent-facq.jpg`,
   },
