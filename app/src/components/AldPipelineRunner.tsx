@@ -9,6 +9,7 @@ import type { AldMethod, AldMoleculePreset, HpcJobStatus } from "../types";
 import { AldAdvancedConfig } from "./AldAdvancedConfig";
 import { HpcResourceSettings, HpcWorkersStatus } from "./HpcResourceSettings";
 import { StepCard, STEP_STATUS_STYLES, STEP_STATUS_TEXT_STYLES } from "./PhaseSteps";
+import { QueuePosition } from "./QueuePosition";
 
 const HPC_STATUS_LABELS: Partial<Record<string, string>> = {
   queued_slurm: "queued on SLURM",
@@ -76,13 +77,19 @@ export function AldPipelineRunner() {
   const hpcActive = hpcJob && isHpcJobActive(hpcJob.status);
   const hpcStoppable = hpcActive && hpcJob.status !== "cancelling";
   const hpcBoxStatus = hpcJobToBoxStatus(hpcJob?.status, Boolean(hpcRun.error));
+  // progress.phases peut être absent (worker pas encore à jour avec le fix
+  // de run_ald_job.py qui l'écrit désormais, cf. hpc-bridge ef48643 — un
+  // ancien worker renvoie encore un seul objet plat {phase, status, ...}
+  // sans clé "phases") : Array.isArray() plutôt qu'un simple fallback `?? []`
+  // pour ne pas planter sur .length/.map si "phases" existe mais n'est pas
+  // un tableau (ce qui a fait disparaître toute la page : TypeError non
+  // rattrapée -> React démonte l'arbre -> écran noir).
+  const phases = Array.isArray(hpcJob?.progress?.phases) ? hpcJob.progress.phases : [];
   const steps = useMemo(
-    () => aldStepsFromProgress(methods, hpcJob?.progress?.phases ?? [], hpcJob?.status),
-    [methods, hpcJob?.progress?.phases, hpcJob?.status],
+    () => aldStepsFromProgress(methods, phases, hpcJob?.status),
+    [methods, phases, hpcJob?.status],
   );
-  const overallProgress = hpcJob?.progress?.phases.length
-    ? hpcJob.progress.phases[hpcJob.progress.phases.length - 1].progress ?? 0
-    : 0;
+  const overallProgress = phases.length > 0 ? phases[phases.length - 1].progress ?? 0 : 0;
 
   // Même verrou synchrone que "Restart HPC" côté MaxCut (cf. PipelineRunner.tsx) :
   // ferme la fenêtre entre le clic et le re-render qui désactive le bouton.
@@ -217,6 +224,15 @@ export function AldPipelineRunner() {
               Status: <span className="font-medium text-foreground">{HPC_STATUS_LABELS[hpcJob.status] ?? hpcJob.status}</span>
               {hpcJob.slurm_job_id ? ` · SLURM ${hpcJob.slurm_job_id}` : ""}
             </p>
+          ) : null}
+          {hpcJob?.status === "queued_slurm" && hpcJob.queue_position != null ? (
+            <QueuePosition
+              position={hpcJob.queue_position}
+              total={hpcJob.queue_total ?? null}
+              estimatedStart={hpcJob.estimated_start ?? null}
+              estimatedStartPending={hpcJob.estimated_start_pending ?? false}
+              queuedSince={hpcJob.queued_since ?? hpcJob.created_at ?? null}
+            />
           ) : null}
           {hpcJob?.error ? <p className="mt-2 text-red-200">{hpcJob.error}</p> : null}
         </div>
