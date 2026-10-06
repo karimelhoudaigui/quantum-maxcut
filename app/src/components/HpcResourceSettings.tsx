@@ -78,10 +78,13 @@ export function HpcResourceSettings({
   resources: HpcResourcesRequest;
   onChange: (patch: Partial<HpcResourcesRequest>) => void;
 }) {
-  const partitionNames = useMemo(
-    () => (capabilities ? Object.keys(capabilities.partitions).sort() : []),
-    [capabilities],
-  );
+  // Pas de .sort() : l'ordre vient tel quel du worker (cf. hpc_worker.py,
+  // _order_partitions_for_curta — préférences propres à curta, préemptible
+  // en premier/formation en dernier, pas un tri alphabétique). JSON.parse
+  // préserve l'ordre d'insertion d'un objet pour des clés non-numériques
+  // comme des noms de partition, donc Object.keys() ici reflète fidèlement
+  // ce que le worker a choisi d'annoncer, dans cet ordre.
+  const partitionNames = useMemo(() => (capabilities ? Object.keys(capabilities.partitions) : []), [capabilities]);
   const selectedPartition = resources.partition ?? capabilities?.default_partition ?? partitionNames[0];
   const partitionInfo = selectedPartition ? capabilities?.partitions[selectedPartition] : undefined;
   const maxCpus = capabilities?.max_cpus ?? 32;
