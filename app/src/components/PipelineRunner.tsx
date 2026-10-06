@@ -5,7 +5,8 @@ import { usePipelineRunner } from "../hooks/usePipeline";
 import { buildInfo, formatBuildInfoDate } from "../lib/buildInfo";
 import { usePipelineStore } from "../stores/pipelineStore";
 import { isHpcJobActive } from "../types";
-import type { HpcJobStatus, HpcPhaseUpdate, HpcResourcesRequest, HpcRoundingProgress, HpcWorkerCapabilities, PipelineStep } from "../types";
+import type { HpcJobStatus, HpcPhaseUpdate, HpcRoundingProgress, PipelineStep } from "../types";
+import { formatMinutes, HpcResourceSettings } from "./HpcResourceSettings";
 
 const HPC_STATUS_LABELS: Partial<Record<string, string>> = {
   queued_slurm: "queued on SLURM",
@@ -20,25 +21,6 @@ const HPC_STATUS_LABELS: Partial<Record<string, string>> = {
 // qui n'a de sens qu'en build de production (npm run build, un seul process, une seule
 // exécution du module).
 const MODULE_LOAD_TIME = new Date();
-
-// Formate des minutes en libellé lisible : "45min", "3h30", "2j 4h" — la
-// granularité affichée s'adapte à l'ordre de grandeur (minutes seules en
-// dessous d'1h, heures:minutes en dessous d'1j, jours+heures au-delà)
-// plutôt que d'afficher un nombre de minutes à 4 chiffres.
-function formatMinutes(minutes: number): string {
-  const total = Math.round(minutes);
-  const days = Math.floor(total / (24 * 60));
-  const hours = Math.floor((total % (24 * 60)) / 60);
-  const mins = total % 60;
-
-  if (days > 0) {
-    return hours > 0 ? `${days}j ${hours}h` : `${days}j`;
-  }
-  if (hours > 0) {
-    return mins > 0 ? `${hours}h${String(mins).padStart(2, "0")}` : `${hours}h`;
-  }
-  return `${mins}min`;
-}
 
 // Compte à rebours "mm:ss" / "hh:mm:ss" / "Nj hh:mm:ss" jusqu'à `target` (Date) —
 // même logique de granularité que formatMinutes mais avec les secondes, utiles ici
@@ -420,125 +402,6 @@ function QueuePosition({
         </span>
       ) : null}
     </div>
-  );
-}
-
-function SliderField({
-  label,
-  value,
-  min,
-  max,
-  suffix = "",
-  formatValue,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  suffix?: string;
-  formatValue?: (value: number) => string;
-  onChange: (value: number) => void;
-}) {
-  return (
-    <label className="flex flex-col gap-1 text-xs text-foreground/60">
-      <span className="flex items-center justify-between">
-        <span>{label}</span>
-        <span className="font-mono text-foreground/80">{formatValue ? formatValue(value) : `${value}${suffix}`}</span>
-      </span>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        value={Math.min(Math.max(value, min), max)}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="accent-primary"
-      />
-    </label>
-  );
-}
-
-// Menu de paramétrage du run HPC, replié par défaut (élément <details> natif,
-// même pattern que ResultJson ci-dessous) : les bornes (partitions proposées,
-// cœurs/mémoire max, temps max par partition) viennent de ce que le worker
-// connecté a annoncé à sa connexion (cf. hpc_worker.py WorkerConfig/register,
-// sl_server.py Worker.capabilities) — un client ne peut jamais les dépasser,
-// quoi qu'il envoie ici (revérifié côté worker, cf. resolve_job_resources).
-function HpcResourceSettings({
-  capabilities,
-  resources,
-  onChange,
-}: {
-  capabilities: HpcWorkerCapabilities | undefined;
-  resources: HpcResourcesRequest;
-  onChange: (patch: Partial<HpcResourcesRequest>) => void;
-}) {
-  const partitionNames = useMemo(
-    () => (capabilities ? Object.keys(capabilities.partitions).sort() : []),
-    [capabilities],
-  );
-  const selectedPartition = resources.partition ?? capabilities?.default_partition ?? partitionNames[0];
-  const partitionInfo = selectedPartition ? capabilities?.partitions[selectedPartition] : undefined;
-  const maxCpus = capabilities?.max_cpus ?? 32;
-  const maxMemGb = capabilities?.max_mem_gb ?? 0;
-  // Le worker peut annoncer "pas de plafond configuré" (max_mem_gb=0, cf.
-  // --max-mem-gb) : un slider a quand même besoin d'une borne finie pour être
-  // utilisable, 128 Go sert alors de repère purement indicatif côté UI — le
-  // worker, lui, n'appliquera aucun plafond réel dans ce cas (cf. resolve_job_resources).
-  const memSliderMax = maxMemGb > 0 ? maxMemGb : 128;
-  const defaultTimeMin = capabilities?.default_time_min_minutes ?? 20;
-  const timeMinSliderMax = partitionInfo?.max_time_minutes ?? 1440;
-
-  return (
-    <details className="mb-4 rounded-md border border-border bg-background/60">
-      <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium text-foreground/60 hover:text-foreground">
-        Job resources{selectedPartition ? ` (${selectedPartition})` : ""}
-      </summary>
-      <div className="grid gap-3 border-t border-border p-3 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="flex flex-col gap-1 text-xs text-foreground/60">
-          Partition
-          <select
-            value={selectedPartition ?? ""}
-            disabled={partitionNames.length === 0}
-            onChange={(e) => onChange({ partition: e.target.value })}
-            className="rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground disabled:opacity-50"
-          >
-            {partitionNames.length === 0 ? <option value="">(none advertised)</option> : null}
-            {partitionNames.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <SliderField
-          label="Cores"
-          min={1}
-          max={maxCpus}
-          value={resources.cpus ?? capabilities?.default_cpus_per_task ?? 8}
-          onChange={(cpus) => onChange({ cpus })}
-        />
-
-        <SliderField
-          label={`Memory (0 = auto${maxMemGb <= 0 ? ", no server-side cap" : ""})`}
-          min={0}
-          max={memSliderMax}
-          suffix=" GB"
-          value={resources.mem_gb ?? 0}
-          onChange={(mem_gb) => onChange({ mem_gb })}
-        />
-
-        <SliderField
-          label={`Min time${partitionInfo?.max_time_minutes != null ? ` (partition max ${formatMinutes(partitionInfo.max_time_minutes)})` : ""}`}
-          min={1}
-          max={timeMinSliderMax}
-          formatValue={formatMinutes}
-          value={resources.time_min_minutes ?? defaultTimeMin}
-          onChange={(time_min_minutes) => onChange({ time_min_minutes })}
-        />
-      </div>
-    </details>
   );
 }
 

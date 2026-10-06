@@ -225,7 +225,10 @@ export interface AldActiveSpaceConfig {
   n_active_electrons: number;
   n_active_orbitals: number;
   orbital_indices?: number[];
-  selection_mode?: "manual" | "auto";
+  // "canonical" (pas "auto" : nom imposé par ActiveSpaceConfig.__post_init__
+  // côté quantum_ald/active_space.py, qui rejette toute autre valeur) laisse
+  // orbital_indices vide et le backend choisit les orbitales canoniques.
+  selection_mode?: "manual" | "canonical";
 }
 
 export interface AldAnsatzConfig {

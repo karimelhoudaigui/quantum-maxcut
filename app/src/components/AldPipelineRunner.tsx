@@ -5,6 +5,8 @@ import { useAldPipelineRunner } from "../hooks/useAldPipeline";
 import { useAldStore } from "../stores/aldStore";
 import { isHpcJobActive } from "../types";
 import type { AldMethod, AldMoleculePreset, HpcJobStatus } from "../types";
+import { AldAdvancedConfig } from "./AldAdvancedConfig";
+import { HpcResourceSettings } from "./HpcResourceSettings";
 
 const HPC_STATUS_LABELS: Partial<Record<string, string>> = {
   queued_slurm: "queued on SLURM",
@@ -67,11 +69,22 @@ export function AldPipelineRunner() {
   const methods = useAldStore((state) => state.methods);
   const setMethods = useAldStore((state) => state.setMethods);
   const hpcJob = useAldStore((state) => state.hpcJob);
+  const hpcResources = useAldStore((state) => state.hpcResources);
+  const setHpcResources = useAldStore((state) => state.setHpcResources);
+  const activeSpace = useAldStore((state) => state.activeSpace);
+  const setActiveSpace = useAldStore((state) => state.setActiveSpace);
+  const ansatz = useAldStore((state) => state.ansatz);
+  const setAnsatz = useAldStore((state) => state.setAnsatz);
+  const solver = useAldStore((state) => state.solver);
+  const setSolver = useAldStore((state) => state.setSolver);
   const { hpcRun, hpcStop, workers } = useAldPipelineRunner();
 
   const workerCount = workers.data?.length ?? 0;
   const workersKnown = workers.isSuccess;
   const clusterUnavailable = workersKnown && workerCount === 0;
+  // Un seul worker attendu en pratique (POC) — même hypothèse que PipelineRunner.tsx
+  // (MaxCut) : dispatch_to_worker côté SL prend le premier worker connecté sans choix.
+  const workerCapabilities = workers.data?.[0]?.capabilities;
   const hpcActive = hpcJob && isHpcJobActive(hpcJob.status);
   const hpcStoppable = hpcActive && hpcJob.status !== "cancelling";
   const hpcBoxStatus = hpcJobToBoxStatus(hpcJob?.status, Boolean(hpcRun.error));
@@ -132,6 +145,18 @@ export function AldPipelineRunner() {
           </div>
         </div>
       </div>
+
+      <AldAdvancedConfig
+        moleculePreset={moleculePreset}
+        methods={methods}
+        activeSpace={activeSpace}
+        onActiveSpaceChange={setActiveSpace}
+        ansatz={ansatz}
+        onAnsatzChange={setAnsatz}
+        solver={solver}
+        onSolverChange={setSolver}
+      />
+      <HpcResourceSettings capabilities={workerCapabilities} resources={hpcResources} onChange={setHpcResources} />
 
       <div className="mb-4 flex items-stretch gap-2">
         <div className="flex items-stretch overflow-hidden rounded-md border border-primary/60">
