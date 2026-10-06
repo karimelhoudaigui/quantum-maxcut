@@ -95,11 +95,19 @@ export function isHpcJobActive(status: HpcJobStatus): boolean {
 }
 
 export interface HpcPhaseUpdate {
-  phase: "setup" | "positions" | "pulser" | "sdp" | "rounding";
+  // string plutôt que le seul union MaxCut ("setup"|"positions"|...) : les
+  // phases ald_pipeline (validate/molecule/scf/active_space/mapping/vqe/
+  // comparison, cf. run_ald_job.py et quantum_ald/experiment.py) partagent
+  // la même forme de progress.json/job_update (cf. hpc_worker.py,
+  // poll_and_relay_progress, générique quel que soit le job kind) sans
+  // avoir de type dédié — élargir ce champ évite un type HpcPhaseUpdate
+  // dupliqué juste pour ça. Les valeurs MaxCut restent des string valides.
+  phase: string;
+  status?: "completed" | "failed";
   completed_at: number;
   /** Pour "pulser" : inclut le temps de calcul du ground state (np.linalg.eigh × 2, négligeable en
    *  pratique) en plus de la simulation qutip elle-même — cf. hybrid_graph_study.py, notify("pulser"). */
-  duration_seconds: number;
+  duration_seconds?: number;
   magnetization_series?: { times: number[]; magnetization: number[][] } | null;
   rounding_trials_series?: { seed: number; ratio_product: number }[] | null;
   /** Métrique propre à chaque phase, connue dès qu'elle se termine (pas seulement au résultat final). */
@@ -107,6 +115,13 @@ export interface HpcPhaseUpdate {
   ratio_pulser?: number;
   sdp_status?: string;
   ratio_hybrid?: number;
+  /** Champs propres à ald_pipeline (cf. quantum_ald/experiment.py, _emit_progress) — passthrough
+   *  générique, pas de schéma figé ici (même philosophie que JOB_UPDATE_RESERVED_KEYS côté sl_server.py). */
+  message?: string;
+  progress?: number;
+  active_space_index?: number;
+  total_active_spaces?: number;
+  completed_active_spaces?: number;
 }
 
 export interface HpcRoundingProgress {

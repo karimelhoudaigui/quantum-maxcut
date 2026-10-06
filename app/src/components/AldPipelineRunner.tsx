@@ -1,12 +1,14 @@
 import { Check, Cloud, Loader2, Square, X } from "lucide-react";
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 
 import { useAldPipelineRunner } from "../hooks/useAldPipeline";
+import { aldStepsFromProgress } from "../lib/aldPhases";
 import { useAldStore } from "../stores/aldStore";
 import { isHpcJobActive } from "../types";
 import type { AldMethod, AldMoleculePreset, HpcJobStatus } from "../types";
 import { AldAdvancedConfig } from "./AldAdvancedConfig";
 import { HpcResourceSettings, HpcWorkersStatus } from "./HpcResourceSettings";
+import { StepCard, STEP_STATUS_STYLES, STEP_STATUS_TEXT_STYLES } from "./PhaseSteps";
 
 const HPC_STATUS_LABELS: Partial<Record<string, string>> = {
   queued_slurm: "queued on SLURM",
@@ -31,20 +33,6 @@ function hpcJobToBoxStatus(status: HpcJobStatus | undefined, hasError: boolean):
   if (status === "error" || status === "cancelled") return "failed";
   return "running";
 }
-
-const STEP_STATUS_STYLES = {
-  pending: "border-border bg-background/70",
-  running: "border-primary/70 bg-primary/10 shadow-[0_0_0_1px_rgba(120,228,202,0.25)]",
-  completed: "border-primary bg-primary/20",
-  failed: "border-red-500/70 bg-red-500/10",
-} as const;
-
-const STEP_STATUS_TEXT_STYLES = {
-  pending: "text-foreground/50",
-  running: "text-primary",
-  completed: "text-primary",
-  failed: "text-red-300",
-} as const;
 
 const HPC_SPINNING_STATUSES = new Set<HpcJobStatus>([
   "queued",
@@ -88,6 +76,13 @@ export function AldPipelineRunner() {
   const hpcActive = hpcJob && isHpcJobActive(hpcJob.status);
   const hpcStoppable = hpcActive && hpcJob.status !== "cancelling";
   const hpcBoxStatus = hpcJobToBoxStatus(hpcJob?.status, Boolean(hpcRun.error));
+  const steps = useMemo(
+    () => aldStepsFromProgress(methods, hpcJob?.progress?.phases ?? [], hpcJob?.status),
+    [methods, hpcJob?.progress?.phases, hpcJob?.status],
+  );
+  const overallProgress = hpcJob?.progress?.phases.length
+    ? hpcJob.progress.phases[hpcJob.progress.phases.length - 1].progress ?? 0
+    : 0;
 
   // Même verrou synchrone que "Restart HPC" côté MaxCut (cf. PipelineRunner.tsx) :
   // ferme la fenêtre entre le clic et le re-render qui désactive le bouton.
@@ -193,6 +188,15 @@ export function AldPipelineRunner() {
             </button>
           ) : null}
         </div>
+      </div>
+
+      <div className="mb-4 h-2 overflow-hidden rounded-full bg-background">
+        <div className="h-full bg-primary transition-all duration-500" style={{ width: `${overallProgress}%` }} />
+      </div>
+      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+        {steps.map((step) => (
+          <StepCard key={step.id} step={step} />
+        ))}
       </div>
 
       <HpcWorkersStatus workers={workers} />
