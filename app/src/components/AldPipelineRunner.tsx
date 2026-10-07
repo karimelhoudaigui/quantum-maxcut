@@ -90,6 +90,18 @@ export function AldPipelineRunner() {
     [methods, phases, hpcJob?.status],
   );
   const overallProgress = phases.length > 0 ? phases[phases.length - 1].progress ?? 0 : 0;
+  // Toutes les cartes de phase affichent déjà "completed" (la dernière,
+  // "comparison", est émise par quantum_ald juste avant son `return` — cf.
+  // experiment.py, pas de calcul restant après) alors que hpcJob.status est
+  // encore "running" : le process SLURM met un peu de temps à vraiment
+  // sortir de la file après la dernière phase (déchargement des libs
+  // natives qiskit-aer/pyscf, écriture de result.json sur le filesystem du
+  // cluster), et le worker ne relaie "done" qu'une fois squeue/sacct
+  // confirment la fin réelle du job (poll toutes les 3s, cf. hpc_worker.py
+  // wait_for_slurm_job). Sans ce message, cet intervalle (habituellement
+  // quelques secondes à ~1 minute) ressemble à un blocage côté UI.
+  const allPhasesComplete = steps.length > 0 && steps.every((step) => step.status === "completed");
+  const finalizingResult = hpcJob?.status === "running" && allPhasesComplete;
 
   // Même verrou synchrone que "Restart HPC" côté MaxCut (cf. PipelineRunner.tsx) :
   // ferme la fenêtre entre le clic et le re-render qui désactive le bouton.
@@ -223,6 +235,12 @@ export function AldPipelineRunner() {
             <p className="mt-2 text-foreground/70">
               Status: <span className="font-medium text-foreground">{HPC_STATUS_LABELS[hpcJob.status] ?? hpcJob.status}</span>
               {hpcJob.slurm_job_id ? ` · SLURM ${hpcJob.slurm_job_id}` : ""}
+            </p>
+          ) : null}
+          {finalizingResult ? (
+            <p className="mt-2 flex items-center gap-1.5 text-foreground/60">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              All phases completed — waiting for the SLURM job to finish and the result to come back (usually a few seconds to ~1 minute)…
             </p>
           ) : null}
           {hpcJob?.status === "queued_slurm" && hpcJob.queue_position != null ? (
