@@ -10,6 +10,20 @@ const REFERENCE_LABELS: Record<string, string> = {
   fci_full_space: "FCI (full space)",
 };
 
+// ExperimentResult.status (cf. quantum_ald/experiment.py, run_experiment) :
+// "completed"/"partial"/"invalid_configuration"/"failed" — sans code couleur,
+// ce statut en texte neutre passait inaperçu à côté des cartes "Global
+// references" (valeurs HF/FCI, en vert) qui restent affichées même si TOUS
+// les active spaces sont invalides (HF/FCI pleine échelle ne dépendent pas
+// de l'active space, cf. _run_global_references) : un run invalid_configuration
+// semblait "à moitié réussi" alors qu'aucun CASCI/VQE n'a pu tourner.
+const STATUS_COLOR_CLASSES: Record<string, string> = {
+  completed: "text-primary",
+  partial: "text-yellow-400",
+  invalid_configuration: "text-red-300",
+  failed: "text-red-300",
+};
+
 export function AldResultsDashboard() {
   const hpcJob = useAldStore((state) => state.hpcJob);
   const result = hpcJob?.result;
@@ -43,7 +57,10 @@ export function AldResultsDashboard() {
       {result ? (
         <div className="rounded-md border border-border bg-background/70 p-3 text-xs text-foreground/60">
           <p>
-            Status: <span className="font-medium text-foreground">{status ?? "—"}</span>
+            Status:{" "}
+            <span className={`font-medium ${status ? (STATUS_COLOR_CLASSES[status] ?? "text-foreground") : "text-foreground"}`}>
+              {status ?? "—"}
+            </span>
           </p>
           {experimentId ? <p className="mt-1 truncate font-mono text-foreground/45">{experimentId}</p> : null}
         </div>
